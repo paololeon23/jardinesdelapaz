@@ -1,11 +1,12 @@
 {
-  "name": "Reporte QBerries - Actos y Condiciones Inseguras",
-  "short_name": "QBerries",
-  "description": "Reporte de Actos y/o Condiciones Inseguras",
+  "name": "Proforma Jardines de la Paz",
+  "short_name": "Jardines Proforma",
+  "description": "Proforma y cotización - Jardines de la Paz. Funciona con y sin internet.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0056b3",
+  "background_color": "#fcfaf5",
+  "theme_color": "#1a4731",
   "icons": [
     {
       "src": "logo.png",

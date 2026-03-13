@@ -1,728 +1,785 @@
 /**
- * script.js - Lógica de pantalla: sidebar, vistas, estado de conexión, avisos.
- * La lógica del formulario de reporte (buildPayload, fotos, POST) está en network.js (initReporteForm).
- * SweetAlert se usa desde network.js para mensajes de guardado/error; aquí solo se inicializa lo que toca a la UI.
+ * script.js - Proforma Jardines de la Paz
+ * Cálculos, generación PDF/imagen, SweetAlert (Enviar a WhatsApp, Ver PDF, Limpiar).
+ * Estado de conexión vía network.js (sin eliminar; se usa updateUI).
  */
-import { updateUI, initReporteForm, getHistorialEntries, enviarPendientes } from './network.js';
-let firmaImagenDataUrl = '';
-let bloquearAperturaPdfHasta = 0;
-let modalPdfAbierto = false;
-let generandoPdf = false;
+import { updateUI } from './network.js';
 
-// Estado de conexión y contador de pendientes
-                        updateUI();
-window.addEventListener('online', () => { updateUI(); enviarPendientes(); });
-window.addEventListener('offline', () => updateUI());
-window.addEventListener('pending-updated', () => updateUI());
+const VERDE = '#1a4731';
+const DORADO = '#a6894a';
+const STORAGE_KEY = 'jardines_de_la_paz_proforma';
 
-/** Devuelve true si el formulario de reporte tiene al menos un campo con datos (para avisar antes de refrescar/salir) */
-function formTieneDatos() {
-    const form = document.getElementById('seguridad-form');
-    if (!form) return false;
-    const inputs = form.querySelectorAll('input:not([type="file"]), textarea');
-    for (const el of inputs) {
-        if (el.type === 'checkbox' || el.type === 'radio') {
-            if (el.checked) return true;
-        } else if ((el.value || '').toString().trim() !== '') {
-            return true;
-        }
-    }
-            return false;
+function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const v = parseFloat(String(el.value || '0').replace(',', '.'), 10);
+    return isNaN(v) ? 0 : v;
 }
 
-function recortarFirmaDataUrl(dataUrl) {
-    return new Promise((resolve) => {
-        if (!dataUrl) { resolve(''); return; }
-        const img = new Image();
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth || img.width;
-                canvas.height = img.naturalHeight || img.height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) { resolve(dataUrl); return; }
-                ctx.drawImage(img, 0, 0);
-                const w = canvas.width;
-                const h = canvas.height;
-                const pixels = ctx.getImageData(0, 0, w, h).data;
-                let minX = w, minY = h, maxX = -1, maxY = -1;
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const i = ((y * w) + x) * 4;
-                        const r = pixels[i];
-                        const g = pixels[i + 1];
-                        const b = pixels[i + 2];
-                        const a = pixels[i + 3];
-                        const isInk = a > 10 && !(r > 245 && g > 245 && b > 245);
-                        if (!isInk) continue;
-                        if (x < minX) minX = x;
-                        if (y < minY) minY = y;
-                        if (x > maxX) maxX = x;
-                        if (y > maxY) maxY = y;
-                    }
-                }
-                if (maxX < minX || maxY < minY) { resolve(dataUrl); return; }
-                const pad = 6;
-                minX = Math.max(0, minX - pad);
-                minY = Math.max(0, minY - pad);
-                maxX = Math.min(w - 1, maxX + pad);
-                maxY = Math.min(h - 1, maxY + pad);
-                const outW = maxX - minX + 1;
-                const outH = maxY - minY + 1;
-                const out = document.createElement('canvas');
-                out.width = outW;
-                out.height = outH;
-                const outCtx = out.getContext('2d');
-                if (!outCtx) { resolve(dataUrl); return; }
-                outCtx.drawImage(canvas, minX, minY, outW, outH, 0, 0, outW, outH);
-                resolve(out.toDataURL('image/png'));
-            } catch (_) {
-                resolve(dataUrl);
+function getStr(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+}
+
+function getTotal() {
+    return getNum('pro_lote') + getNum('pro_servicio');
+}
+
+function getNeto() {
+    const total = getTotal();
+    const desc = getNum('pro_descuento');
+    return total + desc; // descuento suele ser negativo, ej. -1000
+}
+
+function getSumaCeldas() {
+    const container = document.getElementById('cuota-celdas-container');
+    if (!container) return 0;
+    const inputs = container.querySelectorAll('.cuota-celda');
+    let sum = 0;
+    inputs.forEach(inp => {
+        const v = parseFloat(String(inp.value || '0').replace(',', '.'), 10);
+        sum += isNaN(v) ? 0 : v;
+    });
+    return Math.round(sum);
+}
+
+function updateDisplays() {
+    const totalEl = document.getElementById('pro_total_display');
+    const netoEl = document.getElementById('pro_neto_display');
+    if (totalEl) totalEl.textContent = String(Math.round(getTotal()));
+    if (netoEl) netoEl.value = String(Math.round(getNeto()));
+
+    document.querySelectorAll('.cuota-label-text').forEach(function(span) {
+        const id = span.getAttribute('data-for');
+        if (id) {
+            const n = Math.round(getNum(id));
+            span.textContent = n === 1 ? 'cuota' : 'cuotas';
+        }
+    });
+
+    let cuotas47 = 0;
+    const stack = document.querySelector('.cuotas-row-stack');
+    if (stack) {
+        stack.querySelectorAll('.cuota-item:not(.cuota-item-total) .cuota-num').forEach(function(inp) {
+            cuotas47 += Math.round(parseFloat(String(inp.value || '0').replace(',', '.'), 10) || 0);
+        });
+    }
+    const el47 = document.getElementById('pro_cuotas_47');
+    if (el47) el47.value = String(cuotas47);
+}
+
+function guardarProforma() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const ids = ['pro_lote', 'pro_servicio', 'pro_descuento', 'pro_neto_display', 'pro_inicial',
+            'pro_cuotas_18', 'pro_monto_18', 'pro_cuotas_28', 'pro_monto_28', 'pro_cuotas_01', 'pro_monto_01',
+            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono'];
+        const data = {};
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && 'value' in el) data[id] = el.value;
+        });
+        const container = document.getElementById('cuota-celdas-container');
+        data.celdas = [];
+        if (container) {
+            container.querySelectorAll('.cuota-celda').forEach(inp => data.celdas.push(inp.value || ''));
+        }
+        const extraCont = document.getElementById('cuotas-extra-container');
+        data.extraRows = [];
+        if (extraCont) {
+            extraCont.querySelectorAll('.cuota-item').forEach(function(row) {
+                const num = row.querySelector('.cuota-num');
+                const monto = row.querySelector('.cuota-monto');
+                if (num && monto) data.extraRows.push({ cuotas: num.value || '0', monto: monto.value || '0' });
+            });
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+}
+
+function cargarProforma() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        const ids = ['pro_lote', 'pro_servicio', 'pro_descuento', 'pro_neto_display', 'pro_inicial',
+            'pro_cuotas_18', 'pro_monto_18', 'pro_cuotas_28', 'pro_monto_28', 'pro_cuotas_01', 'pro_monto_01',
+            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono'];
+        ids.forEach(id => {
+            if (data[id] === undefined) return;
+            const el = document.getElementById(id);
+            if (el && 'value' in el) el.value = data[id];
+        });
+        const extraCont = document.getElementById('cuotas-extra-container');
+        if (extraCont && Array.isArray(data.extraRows) && data.extraRows.length > 0) {
+            extraCont.innerHTML = '';
+            data.extraRows.forEach(function(r) {
+                extraCont.appendChild(createExtraCuotaRow(r.cuotas, r.monto));
+            });
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+        const container = document.getElementById('cuota-celdas-container');
+        if (container && Array.isArray(data.celdas) && data.celdas.length > 0) {
+            container.innerHTML = '';
+            data.celdas.forEach((val, i) => container.appendChild(createCeldaRow(val, i)));
+            const btnAdd = document.getElementById('btn-add-celda');
+            if (btnAdd) {
+                btnAdd.disabled = container.children.length >= CELDAS_MAX;
+                btnAdd.setAttribute('title', container.children.length >= CELDAS_MAX ? 'Máximo ' + CELDAS_MAX + ' celdas' : 'Agregar celda');
             }
-        };
-        img.onerror = () => resolve(dataUrl);
-        img.src = dataUrl;
+            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        }
+    } catch (e) {}
+}
+
+const CELDAS_MAX = 10;
+
+function validarLimiteCeldas(inputQueCambio) {
+    const principal = getNum('pro_monto_01');
+    const suma = getSumaCeldas();
+    if (suma <= principal) return;
+    const valorActual = parseFloat(String(inputQueCambio.value || '0').replace(',', '.'), 10) || 0;
+    const sumaResto = suma - valorActual;
+    const maxPermitido = Math.max(0, Math.round(principal - sumaResto));
+    inputQueCambio.value = String(maxPermitido);
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Límite superado',
+            text: 'No puedes pasar el límite de la cantidad ' + principal + '. Suma de celdas no puede ser mayor.',
+            icon: 'warning',
+            confirmButtonColor: VERDE
+        });
+    } else {
+        alert('No puedes pasar el límite de la cantidad ' + principal + '.');
+    }
+}
+
+function createCeldaRow(value, index) {
+    const row = document.createElement('div');
+    row.className = 'cuota-celda-row';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'cuota-celda';
+    input.value = value;
+    input.min = 0;
+    input.setAttribute('aria-label', 'Celda ' + (index + 1));
+    input.addEventListener('input', () => validarLimiteCeldas(input));
+    input.addEventListener('change', () => validarLimiteCeldas(input));
+    row.appendChild(input);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-delete-celda';
+    btn.title = 'Eliminar';
+    btn.setAttribute('aria-label', 'Eliminar celda');
+    btn.innerHTML = '<i data-lucide="trash-2"></i>';
+    btn.addEventListener('click', () => {
+        const container = document.getElementById('cuota-celdas-container');
+        const btnAdd = document.getElementById('btn-add-celda');
+        if (!container) return;
+
+        row.remove();
+        guardarProforma();
+        if (btnAdd && container.children.length < CELDAS_MAX) {
+            btnAdd.disabled = false;
+            btnAdd.setAttribute('title', 'Agregar celda');
+        }
+    });
+    row.appendChild(btn);
+    return row;
+}
+
+function createExtraCuotaRow(cuotasVal, montoVal, index) {
+    const container = document.getElementById('cuotas-extra-container');
+    const idx = index !== undefined ? index : (container ? container.children.length : 0);
+    const idNum = 'pro_cuotas_extra_' + idx;
+    const idMonto = 'pro_monto_extra_' + idx;
+
+    const row = document.createElement('span');
+    row.className = 'cuota-item cuota-item-extra';
+
+    const inputNum = document.createElement('input');
+    inputNum.type = 'number';
+    inputNum.id = idNum;
+    inputNum.value = cuotasVal !== undefined ? cuotasVal : '';
+    inputNum.min = 0;
+    inputNum.className = 'cuota-num';
+    inputNum.setAttribute('aria-label', 'Número de cuotas');
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'cuota-label';
+    labelSpan.innerHTML = '<span class="cuota-label-text" data-for="' + idNum + '">cuotas</span> <span class="cuota-arrow">---></span>';
+
+    const inputMonto = document.createElement('input');
+    inputMonto.type = 'number';
+    inputMonto.id = idMonto;
+    inputMonto.value = montoVal !== undefined ? montoVal : '';
+    inputMonto.min = 0;
+    inputMonto.className = 'cuota-monto';
+    inputMonto.setAttribute('aria-label', 'Monto cuota');
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'btn-delete-celda btn-delete-extra-row';
+    btnDel.title = 'Eliminar';
+    btnDel.setAttribute('aria-label', 'Eliminar opción');
+    btnDel.innerHTML = '<i data-lucide="trash-2"></i>';
+    btnDel.addEventListener('click', function() {
+        row.remove();
+        updateDisplays();
+        guardarProforma();
+    });
+
+    row.appendChild(inputNum);
+    row.appendChild(labelSpan);
+    row.appendChild(inputMonto);
+    row.appendChild(btnDel);
+    return row;
+}
+
+function agregarFilaCuota() {
+    const container = document.getElementById('cuotas-extra-container');
+    if (!container) return;
+    const newRow = createExtraCuotaRow('', '');
+    container.insertBefore(newRow, container.firstChild);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    updateDisplays();
+    guardarProforma();
+}
+
+function resetCeldasCuota480() {
+    const cont = document.getElementById('cuota-celdas-container');
+    if (!cont) return;
+    cont.innerHTML = '';
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+function agregarCeldaCuota480() {
+    const cont = document.getElementById('cuota-celdas-container');
+    const btnAdd = document.getElementById('btn-add-celda');
+    if (!cont || cont.children.length >= CELDAS_MAX) return;
+    const index = cont.children.length;
+    cont.appendChild(createCeldaRow('', index));
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+    if (btnAdd && cont.children.length >= CELDAS_MAX) {
+        btnAdd.disabled = true;
+        btnAdd.setAttribute('title', 'Máximo ' + CELDAS_MAX + ' celdas');
+    } else if (btnAdd) {
+        btnAdd.disabled = false;
+        btnAdd.setAttribute('title', 'Agregar celda');
+    }
+    guardarProforma();
+}
+
+function limpiarForm() {
+    const defaults = {
+        pro_lote: 8570,
+        pro_servicio: 2148,
+        pro_descuento: -1000,
+        pro_inicial: 1052,
+        pro_cuotas_18: 18,
+        pro_monto_18: 209,
+        pro_cuotas_28: 28,
+        pro_monto_28: 158,
+        pro_cuotas_01: 1,
+        pro_monto_01: 480,
+        pro_cuotas_47: 47,
+        pro_carencia: 30,
+        pro_reintegro: 1400,
+        pro_cua: 600,
+        pro_asesora: 'Guadalupe Antunez',
+        pro_telefono: '966192366'
+    };
+    Object.keys(defaults).forEach(id => {
+        const el = document.getElementById(id);
+        if (el && 'value' in el) el.value = defaults[id];
+    });
+    resetCeldasCuota480();
+    const btnAdd = document.getElementById('btn-add-celda');
+    if (btnAdd) {
+        btnAdd.disabled = false;
+        btnAdd.setAttribute('title', 'Agregar celda');
+    }
+    updateDisplays();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+}
+
+/** Valores actuales de las celdas de la cuota 480 (para PDF en tiempo real) */
+function getCeldasValores() {
+    const container = document.getElementById('cuota-celdas-container');
+    if (!container) return [];
+    const inputs = container.querySelectorAll('.cuota-celda');
+    return Array.from(inputs).map(inp => {
+        const v = parseFloat(String(inp.value || '0').replace(',', '.'), 10);
+        return isNaN(v) ? 0 : v;
     });
 }
 
-function getVal(id) {
-    var el = document.getElementById(id);
-    if (!el) return '';
-    if (el.type === 'checkbox') return el.checked ? 'X' : '';
-    if (el.value !== undefined) return (el.value || '').toString().trim();
-    return (el.textContent || '').toString().trim();
-}
+function generarPDFBlob() {
+    const JsPDF = window.jspdf && window.jspdf.jsPDF;
+    if (!JsPDF) return Promise.resolve(null);
+    const doc = new JsPDF('p', 'mm', 'a4');
+    const pageW = 210;
+    const contentW = 170;
+    const m = (pageW - contentW) / 2;
+    const rightX = m + contentW;
+    const verde = [26, 71, 49];
+    const dorado = [166, 137, 74];
+    const texto = [51, 51, 51];
+    const pad = 4;
+    const rowH = 8;
+    const borderHalf = 0.35 / 2;
+    let y = 16;
 
-async function generarPDFReporte(openerEl) {
-    if (generandoPdf || modalPdfAbierto) return;
-    generandoPdf = true;
+    const total = Math.round(getTotal());
+    const neto = Math.round(getNum('pro_neto_display') || getNeto());
 
-    var JsPDF = window.jspdf && window.jspdf.jsPDF;
-    if (!JsPDF) {
-        generandoPdf = false;
-        if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo cargar la librería PDF.', icon: 'error', confirmButtonColor: '#27ae60' });
-        else alert('No se pudo cargar la librería PDF.');
-        return;
-    }
-    var doc = new JsPDF('p', 'mm', 'a4');
-    var m = 10;
-    var w = 190;
-    var y = 10;
-    var gray = [118, 118, 118];
-    var border = [95, 95, 95];
-    var photoBlue = [58, 79, 167];
-
-    function v(id) { return (getVal(id) || '').toString().trim(); }
-    function drawCheck(x, yTop, checked, size) {
-        var s = size || 4.2;
-        doc.rect(x, yTop, s, s);
-        if (checked) doc.text('X', x + (s * 0.26), yTop + (s * 0.76));
-    }
-    function drawBar(titleText, fontSize, barHeight) {
-        var fz = fontSize || 7.5;
-        var bh = barHeight || 6;
-        doc.setFillColor(gray[0], gray[1], gray[2]);
-        doc.rect(m, y, w, bh, 'F');
+    function drawTableHeader(doc, x, y, w, title) {
+        doc.setFillColor(...verde);
+        doc.rect(x, y, w, rowH, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont(undefined, 'bold');
-        doc.setFontSize(fz);
-        doc.text(titleText, m + (w / 2), y + (bh * 0.68), { align: 'center' });
-        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(title, x + pad, y + 5.5);
         doc.setFont(undefined, 'normal');
-        y += bh;
+        doc.setTextColor(...texto);
+        return y + rowH;
     }
-    function drawWrappedInBox(text, x, yTop, boxWidth, boxHeight, lineHeight) {
-        var raw = (text || '').toString().trim();
-        if (!raw) return;
-        var lh = lineHeight || 3.4;
-        var maxLines = Math.max(1, Math.floor((boxHeight - 4) / lh));
-        var lines = doc.splitTextToSize(raw, boxWidth);
-        var drawLines = lines.slice(0, maxLines);
-        for (var i = 0; i < drawLines.length; i++) {
-            doc.text(drawLines[i], x, yTop + 4 + (i * lh), { maxWidth: boxWidth, align: 'justify' });
-        }
-        if (lines.length > maxLines) {
-            doc.text('...', x + boxWidth - 4, yTop + boxHeight - 1.8, { align: 'right' });
-        }
+
+    function drawRow(doc, x, y, w, label, value, boldLabel) {
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.35);
+        doc.line(x, y, x + w, y);
+        if (boldLabel) doc.setFont(undefined, 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...texto);
+        doc.text(label, x + pad, y + 5.5);
+        doc.text(String(value), x + w - pad, y + 5.5, { align: 'right' });
+        if (boldLabel) doc.setFont(undefined, 'normal');
+        return y + rowH;
     }
-    function toCompressedPdfImageFromFile(file) {
-        return new Promise((resolve) => {
-            if (!file) { resolve(''); return; }
-            var reader = new FileReader();
-            reader.onload = () => {
-                var src = typeof reader.result === 'string' ? reader.result : '';
-                if (!src) { resolve(''); return; }
-                var img = new Image();
-                img.onload = () => {
-                    try {
-                        var maxSide = 1600;
-                        var quality = 0.78;
-                        var w = img.naturalWidth || img.width;
-                        var h = img.naturalHeight || img.height;
-                        if (!w || !h) { resolve(src); return; }
-                        var scale = Math.min(1, maxSide / Math.max(w, h));
-                        var tw = Math.max(1, Math.round(w * scale));
-                        var th = Math.max(1, Math.round(h * scale));
-                        var canvas = document.createElement('canvas');
-                        canvas.width = tw;
-                        canvas.height = th;
-                        var ctx = canvas.getContext('2d');
-                        if (!ctx) { resolve(src); return; }
-                        // Fondo blanco para soportar conversiones desde PNG/WebP con transparencia.
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, tw, th);
-                        ctx.drawImage(img, 0, 0, tw, th);
-                        resolve(canvas.toDataURL('image/jpeg', quality));
-                    } catch (_) {
-                        resolve(src);
-                    }
-                };
-                img.onerror = () => resolve(src);
-                img.src = src;
-            };
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(file);
+
+    function drawBoxTitle(doc, x, y, w, title) {
+        doc.setDrawColor(...verde);
+        doc.setLineWidth(0.35);
+        doc.setFillColor(240, 248, 242);
+        doc.rect(x, y, w, rowH + 2, 'FD');
+        doc.setTextColor(...verde);
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(10);
+        doc.text(title, x + pad, y + 6);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(...texto);
+        return y + rowH + 2;
+    }
+
+    // --- Cabecera empresarial ---
+    doc.setDrawColor(...dorado);
+    doc.setLineWidth(0.35);
+    doc.line(m, y, rightX, y);
+    y += 10;
+    doc.setTextColor(...verde);
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('PROFORMA', pageW / 2, y, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...texto);
+    y += 8;
+
+    // --- Tabla: Detalle de costos ---
+    y = drawTableHeader(doc, m, y, contentW, 'DETALLE DE COSTOS');
+    const costos = [
+        ['Lote doble encofrado', getNum('pro_lote')],
+        ['Servicio funerario estándar', getNum('pro_servicio')],
+        ['Total', total],
+        ['Descuento SIS (Deuda pend.)', getNum('pro_descuento')]
+    ];
+    costos.forEach(function (item) {
+        y = drawRow(doc, m, y, contentW, item[0], item[1], item[0] === 'Total');
+    });
+    y += 2;
+
+    // --- Total con descuento e Inicial (cajas destacadas) ---
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.setFillColor(248, 250, 248);
+    doc.rect(m, y, contentW, rowH + 4, 'FD');
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...verde);
+    doc.text('Total con descuento', m + pad, y + 6);
+    doc.text(String(neto) + ' S/', rightX - pad, y + 6, { align: 'right' });
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...texto);
+    y += rowH + 6;
+
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.rect(m, y, contentW, rowH + 2, 'S');
+    doc.setFont(undefined, 'bold');
+    doc.text('Inicial', m + pad, y + 5.5);
+    doc.text(String(getNum('pro_inicial')) + ' S/', rightX - pad, y + 5.5, { align: 'right' });
+    doc.setFont(undefined, 'normal');
+    y += rowH + 6;
+
+    // --- Tabla: Saldo (título + tabla en un solo bloque, bordes cerrados) ---
+    const saldoRows = [];
+    const stackEl = document.querySelector('.cuotas-row-stack');
+    if (stackEl) {
+        stackEl.querySelectorAll('.cuota-item:not(.cuota-item-total)').forEach(function (row) {
+            const nEl = row.querySelector('.cuota-num');
+            const mEl = row.querySelector('.cuota-monto');
+            if (!nEl || !mEl) return;
+            const num = parseFloat(String(nEl.value || '0').replace(',', '.'), 10) || 0;
+            const monto = mEl.value || '0';
+            let desglose = '';
+            const celdasCont = row.querySelector('.cuota-celdas-container');
+            if (celdasCont) {
+                const celdas = Array.from(celdasCont.querySelectorAll('.cuota-celda')).map(function (inp) {
+                    const x = parseFloat(String(inp.value || '0').replace(',', '.'), 10);
+                    return isNaN(x) ? '' : String(x);
+                }).filter(function (v) { return v !== '' && v !== '0'; });
+                if (celdas.length) desglose = celdas.join(', ');
+            }
+            if (!desglose) desglose = '-';
+            saldoRows.push([num + (num === 1 ? ' cuota' : ' cuotas'), monto + ' S/', desglose]);
         });
     }
-    function readInputImageAsDataUrl(inputId) {
-        return new Promise((resolve) => {
-            var input = document.getElementById(inputId);
-            if (!input || !input.files || !input.files[0]) { resolve(''); return; }
-            toCompressedPdfImageFromFile(input.files[0]).then(resolve).catch(() => resolve(''));
-        });
+    const col1 = 50;
+    const col2 = 55;
+    const saldoTitleH = rowH + 2;
+    const saldoHeaderH = rowH;
+    const saldoDataH = saldoRows.length * rowH;
+    const saldoTotalH = rowH;
+    const saldoBlockH = saldoTitleH + saldoHeaderH + saldoDataH + saldoTotalH;
+    const saldoTopY = y;
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, y, m + contentW, y);
+    doc.line(m, y + saldoBlockH, m + contentW, y + saldoBlockH);
+    doc.line(m + borderHalf, y, m + borderHalf, y + saldoBlockH);
+    doc.line(m + contentW, y, m + contentW, y + saldoBlockH);
+    doc.setFillColor(240, 248, 242);
+    doc.rect(m, y, contentW, saldoTitleH, 'F');
+    doc.setFillColor(248, 248, 248);
+    doc.rect(m, y + saldoTitleH, contentW, saldoBlockH - saldoTitleH, 'F');
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, y + saldoTitleH, m + contentW, y + saldoTitleH);
+    doc.line(m, y + saldoTitleH + saldoHeaderH, m + contentW, y + saldoTitleH + saldoHeaderH);
+    doc.line(m + col1, y + saldoTitleH, m + col1, y + saldoBlockH);
+    doc.line(m + col1 + col2, y + saldoTitleH, m + col1 + col2, y + saldoBlockH);
+    for (let i = 1; i <= saldoRows.length; i++) {
+        doc.setDrawColor(200, 200, 200);
+        doc.line(m, y + saldoTitleH + saldoHeaderH + i * rowH, m + contentW, y + saldoTitleH + saldoHeaderH + i * rowH);
     }
-    function drawImageContain(dataUrl, x, yTop, boxW, boxH) {
-        if (!dataUrl) return false;
-        try {
-            var format = 'PNG';
-            if (/^data:image\/jpe?g/i.test(dataUrl)) format = 'JPEG';
-            if (/^data:image\/webp/i.test(dataUrl)) format = 'WEBP';
-            var props = doc.getImageProperties(dataUrl);
-            var imgW = (props && props.width) ? props.width : boxW;
-            var imgH = (props && props.height) ? props.height : boxH;
-            var ratio = imgW / imgH;
-            var drawW = boxW;
-            var drawH = drawW / ratio;
-            if (drawH > boxH) {
-                drawH = boxH;
-                drawW = drawH * ratio;
-            }
-            var drawX = x + ((boxW - drawW) / 2);
-            var drawY = yTop + ((boxH - drawH) / 2);
-            doc.addImage(dataUrl, format, drawX, drawY, drawW, drawH, undefined, 'MEDIUM');
-            return true;
-        } catch (_) {
-            return false;
-        }
-    }
-    var fotosAnexo = await Promise.all([
-        readInputImageAsDataUrl('rep_foto_descripcion'),
-        readInputImageAsDataUrl('rep_foto_accion'),
-        readInputImageAsDataUrl('rep_foto_recomendacion')
-    ]);
-    function drawFirmaImagen(x, yTop, boxW, boxH) {
-        if (!firmaImagenDataUrl) return false;
-        try {
-            var format = 'PNG';
-            if (/^data:image\/jpe?g/i.test(firmaImagenDataUrl)) format = 'JPEG';
-            if (/^data:image\/webp/i.test(firmaImagenDataUrl)) format = 'WEBP';
-            var pad = 0.1;
-            var innerW = Math.max(1, boxW - (pad * 2));
-            var innerH = Math.max(1, boxH - (pad * 2));
-            var props = doc.getImageProperties(firmaImagenDataUrl);
-            var imgW = (props && props.width) ? props.width : innerW;
-            var imgH = (props && props.height) ? props.height : innerH;
-            var ratio = imgW / imgH;
-            var drawW = innerW;
-            var drawH = drawW / ratio;
-            if (drawH > innerH) {
-                drawH = innerH;
-                drawW = drawH * ratio;
-            }
-            // Efecto "z-index": se dibuja un poco más grande para sobresalir
-            // y parecer una firma real estampada sobre el cuadro.
-            var overflowScale = 1.32;
-            drawW *= overflowScale;
-            drawH *= overflowScale;
-            var drawX = x + pad + ((innerW - drawW) / 2);
-            var drawY = yTop + pad + ((innerH - drawH) / 2) + 1.0;
-            doc.addImage(firmaImagenDataUrl, format, drawX, drawY, drawW, drawH, undefined, 'MEDIUM');
-            return true;
-        } catch (_) {
-            return false;
-        }
-    }
-
-    doc.setLineWidth(0.25);
-    doc.setDrawColor(border[0], border[1], border[2]);
-
-    var hHeader = 18;
-    var wLogo = 31;
-    var wTitle = 98;
-    var wMeta = w - wLogo - wTitle;
-    doc.rect(m, y, w, hHeader);
-    doc.line(m + wLogo, y, m + wLogo, y + hHeader);
-    doc.line(m + wLogo + wTitle, y, m + wLogo + wTitle, y + hHeader);
-    doc.line(m + wLogo + wTitle, y + 6, m + w, y + 6);
-    doc.line(m + wLogo + wTitle, y + 12, m + w, y + 12);
-
-    var logoDibujado = false;
-    try {
-        var logoEl = document.querySelector('.sidebar-logo-image') || document.querySelector('.menu-logo-image');
-        if (logoEl && logoEl.complete) {
-            doc.addImage(logoEl, 'PNG', m + 4.6, y + 4.0, 22.8, 9.4, undefined, 'FAST');
-            logoDibujado = true;
-        }
-    } catch (_) {}
-    if (!logoDibujado) {
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(15);
-        doc.setTextColor(192, 57, 43);
-        doc.text('Q', m + 4.2, y + 11.4);
-        doc.setTextColor(39, 174, 96);
-        doc.text('Berries', m + 9.4, y + 11.4);
-        doc.setTextColor(0, 0, 0);
-        doc.setFont(undefined, 'normal');
-    }
-
+    doc.setDrawColor(200, 200, 200);
+    doc.line(m, y + saldoTitleH + saldoHeaderH + saldoDataH, m + contentW, y + saldoTitleH + saldoHeaderH + saldoDataH);
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m + borderHalf, y, m + borderHalf, y + saldoBlockH);
+    doc.line(m + contentW, y, m + contentW, y + saldoBlockH);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...verde);
+    doc.text('SALDO - OPCIONES DE CUOTAS', m + pad, y + 6);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...texto);
+    y += saldoTitleH;
     doc.setFont(undefined, 'bold');
     doc.setFontSize(8);
-    doc.text('REPORTE DE ACTOS Y/O CONDICIONES INSEGURAS', m + wLogo + (wTitle / 2), y + 10, { align: 'center' });
+    doc.setTextColor(...verde);
+    doc.text('Opción', m + 2, y + 5.5);
+    doc.text('Monto', m + col1 + 2, y + 5.5);
+    doc.text('Desglose', m + col1 + col2 + 2, y + 5.5);
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(7);
-    var xMeta = m + wLogo + wTitle;
-    var wMetaCell = wMeta;
+    doc.setTextColor(...texto);
+    y += saldoHeaderH;
+    saldoRows.forEach(function (r) {
+        doc.setFontSize(9);
+        doc.text(r[0], m + 2, y + 5.5);
+        doc.text(r[1], m + col1 + col2 - 2, y + 5.5, { align: 'right' });
+        doc.text(r[2], m + col1 + col2 + 2, y + 5.5);
+        y += rowH;
+    });
     doc.setFont(undefined, 'bold');
-    doc.text('Código:', xMeta + 1.5, y + 4.2);
+    doc.text('Total: ' + getNum('pro_cuotas_47') + ' Cuotas', m + 2, y + 5.5);
     doc.setFont(undefined, 'normal');
-    doc.text(v('rep_codigo'), xMeta + (wMetaCell / 2), y + 4.2, { align: 'center' });
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, saldoTopY, m + contentW, saldoTopY);
+    doc.line(m, saldoTopY + saldoBlockH, m + contentW, saldoTopY + saldoBlockH);
+    doc.line(m + borderHalf, saldoTopY, m + borderHalf, saldoTopY + saldoBlockH);
+    doc.line(m + contentW, saldoTopY, m + contentW, saldoTopY + saldoBlockH);
+    y += saldoTotalH + 2;
+
+    // --- Tabla: Términos (título y 2 columnas en un solo bloque, sin hueco) ---
+    y += 3;
+    const termTopY = y;
+    const termRowH = 8;
+    const termH = termRowH * 3;
+    const termTotalH = rowH + termH;
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, y, m + contentW, y);
+    doc.line(m, y + termTotalH, m + contentW, y + termTotalH);
+    doc.line(m + borderHalf, y, m + borderHalf, y + termTotalH);
+    doc.line(m + contentW, y, m + contentW, y + termTotalH);
+    doc.setFillColor(240, 248, 242);
+    doc.rect(m, y, contentW, rowH, 'F');
+    doc.setFillColor(248, 248, 248);
+    doc.rect(m, y + rowH, contentW, termH, 'F');
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, y + rowH, m + contentW, y + rowH);
+    doc.line(m + contentW * 0.5, y + rowH, m + contentW * 0.5, y + termTotalH);
+    doc.line(m, y + rowH + termRowH, m + contentW, y + rowH + termRowH);
+    doc.line(m, y + rowH + termRowH * 2, m + contentW, y + rowH + termRowH * 2);
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m + borderHalf, y, m + borderHalf, y + termTotalH);
+    doc.line(m + contentW, y, m + contentW, y + termTotalH);
     doc.setFont(undefined, 'bold');
-    doc.text('Versión:', xMeta + 1.5, y + 10.2);
+    doc.setFontSize(10);
+    doc.setTextColor(...verde);
+    doc.text('TÉRMINOS', m + contentW / 2, y + 6, { align: 'center' });
     doc.setFont(undefined, 'normal');
-    doc.text(v('rep_version'), xMeta + (wMetaCell / 2), y + 10.2, { align: 'center' });
-    doc.setFont(undefined, 'bold');
-    doc.text('Aprobación:', xMeta + 1.5, y + 16.2);
-    doc.setFont(undefined, 'normal');
-    doc.text(v('rep_aprobacion'), xMeta + (wMetaCell / 2), y + 16.2, { align: 'center' });
-    y += hHeader + 5;
-
-    doc.setFontSize(8);
-    var yTercero = y + 5.0;
-    var yPropio = y + 13.0;
-    doc.text('TERCERO', m + 9, yTercero);
-    drawCheck(m + 26, yTercero - 3.6, v('rep_tercero') === 'X');
-    doc.text('PROPIO', m + 10, yPropio);
-    drawCheck(m + 26, yPropio - 3.6, v('rep_propio') === 'X');
-
-    var xArea = m + 36;
-    var hArea = 14;
-    doc.rect(xArea, y, w - 36, hArea);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(7);
-    doc.text(v('rep_area').substring(0, 90), xArea + ((w - 36) / 2), y + 8.8, { align: 'center' });
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.text('NOMBRE DE LA EMPRESA CONTRATISTA / ÁREA', xArea + ((w - 36) / 2), y + hArea + 3.2, { align: 'center' });
-    doc.setFont(undefined, 'normal');
-    y += hArea + 5.5;
-
-    var wFecha = 32;
-    var gap = 4;
-    var wLugar = w - wFecha - gap;
-    doc.rect(m, y, wFecha, 8);
-    doc.rect(m + wFecha + gap, y, wLugar, 8);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(7);
-    doc.text(v('rep_fecha_display') || v('rep_fecha'), m + (wFecha / 2), y + 5.5, { align: 'center' });
-    doc.setFont(undefined, 'normal');
-    doc.text(v('rep_lugar').substring(0, 82), m + wFecha + gap + (wLugar / 2), y + 5.5, { align: 'center' });
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.text('FECHA', m + (wFecha / 2), y + 11.5, { align: 'center' });
-    doc.text('LUGAR DE OCURRENCIA (ESPECIFICAR EL LUGAR EXACTO)', m + wFecha + gap + (wLugar / 2), y + 11.5, { align: 'center' });
-    y += 14.5;
-
-    doc.rect(m, y, w, 8);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(7);
-    doc.text(v('rep_persona').substring(0, 95), m + (w / 2), y + 5.5, { align: 'center' });
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.text('NOMBRE DE LA PERSONA REPORTADA', m + (w / 2), y + 11.3, { align: 'center' });
-    y += 14;
-
-    drawBar('CLASIFICACIÓN', 11, 8);
-    y += 1;
-    var wHalf = (w - 2) / 2;
-    var yClassTitles = y + 3.8;
-    var yClassBoxes = y + 6.2;
-    var hClass = 10.8;
-    doc.rect(m, yClassBoxes, wHalf, hClass);
-    doc.rect(m + wHalf + 2, yClassBoxes, wHalf, hClass);
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.text('SEGURIDAD Y SALUD', m + (wHalf / 2), yClassTitles, { align: 'center' });
-    doc.text('MEDIO AMBIENTE', m + wHalf + 2 + (wHalf / 2), yClassTitles, { align: 'center' });
-    doc.setFontSize(8);
-    function drawOption(label, centerX, baselineY, checked) {
-        var tw = doc.getTextWidth(label);
-        var tx = centerX - (tw / 2);
-        doc.text(label, tx, baselineY - 0.8);
-        drawCheck(tx + tw + 1.8, baselineY - 3.8, checked, 4.2);
-    }
-    var yOpt = yClassBoxes + 6.9;
-    var xl = m;
-    drawOption('ACTO', xl + 14, yOpt, v('rep_acto') === 'X');
-    drawOption('CONDICIÓN', xl + 43, yOpt, v('rep_condicion') === 'X');
-    drawOption('INCIDENTE', xl + 73, yOpt, v('rep_incidente') === 'X');
-    var xr = m + wHalf + 2;
-    drawOption('ASPECTO', xr + 26, yOpt, v('rep_aspecto') === 'X');
-    drawOption('IMPACTO', xr + 56, yOpt, v('rep_impacto') === 'X');
-    doc.setFont(undefined, 'normal');
-    y = yClassBoxes + hClass + 3;
-
-    doc.setFillColor(gray[0], gray[1], gray[2]);
-    doc.rect(m, y, w, 8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont(undefined, 'bold');
-    doc.setFontSize(11);
-    doc.text('CAUSA', m + (w / 2), y + 5.4, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
-    y += 9;
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    var leftRows = [
-        ['Orden y Limpieza', 'rep_causa_orden'],
-        ['Herramientas, Materiales y Equipos', 'rep_causa_herramientas'],
-        ['Ergonomía', 'rep_causa_ergonomia'],
-        ['Productos Peligrosos', 'rep_causa_productos'],
-        ['Segregación de residuos', 'rep_causa_residuos'],
-        ['Otros', 'rep_causa_otros']
+    doc.setTextColor(...texto);
+    doc.setFontSize(9);
+    const terms = [
+        ['Periodo de carencia', String(getNum('pro_carencia')) + ' Días'],
+        ['Reintegro', String(getNum('pro_reintegro')) + ' Soles'],
+        ['CUA', String(getNum('pro_cua')) + ' Soles']
     ];
-    var rightRows = [
-        ['Análisis de tareas', 'rep_causa_analisis'],
-        ['Equipo de Protección Personal', 'rep_causa_epp'],
-        ['Conducción de vehículos', 'rep_causa_conduccion'],
-        ['Infraestructura', 'rep_causa_infra'],
-        ['Práctica Ambiental Inadecuada', 'rep_causa_ambiental']
-    ];
-    var rowY = y + 5.6;
-    var rowStep = 7.1;
-    var colLeftStart = m + 1;
-    var colLeftEnd = m + (w / 2) - 3;
-    var colRightStart = m + (w / 2) + 3;
-    var colRightEnd = m + w - 1;
-    var leftCheckX = colLeftEnd - 8;
-    var rightCheckX = colRightEnd - 8;
-    doc.setFontSize(8);
-    for (var li = 0; li < leftRows.length; li++) {
-        var yl = rowY + (li * rowStep);
-        doc.text(leftRows[li][0], leftCheckX - 2.2, yl, { align: 'right' });
-        drawCheck(leftCheckX, yl - 4.5, v(leftRows[li][1]) === 'X', 5.0);
-    }
-    doc.setFontSize(8);
-    for (var ri = 0; ri < rightRows.length; ri++) {
-        var yr = rowY + (ri * rowStep);
-        doc.text(rightRows[ri][0], rightCheckX - 2.2, yr, { align: 'right' });
-        drawCheck(rightCheckX, yr - 4.5, v(rightRows[ri][1]) === 'X', 5.0);
-    }
-    doc.setFont(undefined, 'normal');
-    y += 47;
-
-    drawBar('DESCRIPCIÓN DEL EVENTO (¿Qué pasó?)');
-    var gapBox = 1.2;
-    var yDescBox = y + gapBox;
-    var hDesc = 25;
-    doc.line(m, yDescBox, m + w, yDescBox);
-    doc.line(m, yDescBox, m, yDescBox + hDesc);
-    doc.line(m + w, yDescBox, m + w, yDescBox + hDesc);
-    doc.line(m, yDescBox + hDesc, m + w, yDescBox + hDesc);
-    doc.setFont(undefined, 'normal');
+    const termPad = 12;
+    const termTextYOffset = 0.5;
+    terms.forEach(function (t, i) {
+        const yy = y + rowH + (i + 0.5) * termRowH;
+        const textY = yy + termTextYOffset;
+        const xLeft = m + termPad + (contentW / 2 - termPad * 2) / 2;
+        const xRight = m + contentW / 2 + termPad + (contentW / 2 - termPad * 2) / 2;
+        const w0 = doc.getTextWidth(t[0]);
+        const w1 = doc.getTextWidth(t[1]);
+        doc.text(t[0], xLeft - w0 / 2, textY);
+        doc.text(t[1], xRight - w1 / 2, textY);
+    });
     doc.setFontSize(7);
-    drawWrappedInBox(v('rep_descripcion'), m + 2, yDescBox, w - 6, hDesc, 3.3);
-    doc.setTextColor(photoBlue[0], photoBlue[1], photoBlue[2]);
-    doc.text('FOTO', m + w - 9, yDescBox + hDesc - 1.8);
-    doc.setTextColor(0, 0, 0);
-    y = yDescBox + hDesc + 3;
+    doc.setTextColor(120, 120, 120);
+    doc.text('se paga cuando se usa el espacio', m + pad, y + termTotalH + 4);
+    doc.setTextColor(...texto);
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, termTopY, m + contentW, termTopY);
+    doc.line(m, termTopY + termTotalH, m + contentW, termTopY + termTotalH);
+    doc.line(m + borderHalf, termTopY, m + borderHalf, termTopY + termTotalH);
+    doc.line(m + contentW, termTopY, m + contentW, termTopY + termTotalH);
+    y += termTotalH + 8;
 
-    drawBar('ACCIÓN INMEDIATA (¿Qué se hizo en el momento para reducir el riesgo?)');
-    var yAccionBox = y + gapBox;
-    var hAccion = 17;
-    doc.line(m, yAccionBox, m + w, yAccionBox);
-    doc.line(m, yAccionBox, m, yAccionBox + hAccion);
-    doc.line(m + w, yAccionBox, m + w, yAccionBox + hAccion);
-    doc.line(m, yAccionBox + hAccion, m + w, yAccionBox + hAccion);
-    drawWrappedInBox(v('rep_accion'), m + 2, yAccionBox, w - 6, hAccion, 3.3);
-    doc.setTextColor(photoBlue[0], photoBlue[1], photoBlue[2]);
-    doc.text('FOTO', m + w - 9, yAccionBox + hAccion - 1.8);
-    doc.setTextColor(0, 0, 0);
-    y = yAccionBox + hAccion + 3;
-
-    drawBar('RECOMENDACIÓN (¿Qué se debería hacer para evitar su repetición?)');
-    var yRecoBox = y + gapBox;
-    var hReco = 28;
-    doc.line(m, yRecoBox, m + w, yRecoBox);
-    doc.line(m, yRecoBox, m, yRecoBox + hReco);
-    doc.line(m + w, yRecoBox, m + w, yRecoBox + hReco);
-    doc.line(m, yRecoBox + hReco, m + w, yRecoBox + hReco);
-    drawWrappedInBox(v('rep_recomendacion'), m + 2, yRecoBox, w - 6, hReco, 3.3);
-    doc.setTextColor(photoBlue[0], photoBlue[1], photoBlue[2]);
-    doc.text('FOTO', m + w - 9, yRecoBox + hReco - 1.8);
-    doc.setTextColor(0, 0, 0);
-    y = yRecoBox + hReco + 3;
-
-    var wRep = 132;
-    var wSig = w - wRep - 2;
-    var hFirmaRow = 16;
-    doc.rect(m, y, wRep, hFirmaRow);
-    doc.rect(m + wRep + 2, y, wSig, hFirmaRow);
-    doc.setFontSize(7);
-    doc.text(v('rep_reportante').substring(0, 70), m + (wRep / 2), y + 9.3, { align: 'center' });
-    var firmaBoxX = m + wRep + 2;
-    var firmaDibujada = drawFirmaImagen(firmaBoxX, y, wSig, hFirmaRow);
-    if (!firmaDibujada) {
-        doc.text(v('rep_firma').substring(0, 30), m + wRep + 4, y + 9.5);
-    }
+    // --- Contacto ---
+    y = drawBoxTitle(doc, m, y, contentW, 'CONTACTO');
+    const contactoH = rowH * 2 + 4;
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.line(m, y, m + contentW, y);
+    doc.line(m, y + contactoH, m + contentW, y + contactoH);
+    doc.line(m + borderHalf, y, m + borderHalf, y + contactoH);
+    doc.line(m + contentW, y, m + contentW, y + contactoH);
+    doc.setFontSize(9);
+    doc.text('Asesora comercial: ' + getStr('pro_asesora'), m + pad, y + 6);
+    doc.text('Teléfono: ' + getStr('pro_telefono'), m + pad, y + 6 + rowH);
     doc.setFont(undefined, 'normal');
-    doc.setFontSize(8);
-    doc.text('NOMBRE DEL REPORTANTE', m + (wRep / 2), y + 21.4, { align: 'center' });
-    doc.text('FIRMA', m + wRep + 2 + (wSig / 2), y + 21.4, { align: 'center' });
 
-    var anexos = [
-        { titulo: 'DESCRIPCION DEL EVENTO', dataUrl: fotosAnexo[0] },
-        { titulo: 'ACCION INMEDIATA', dataUrl: fotosAnexo[1] },
-        { titulo: 'RECOMENDACION', dataUrl: fotosAnexo[2] }
-    ].filter(a => !!a.dataUrl);
-
-    if (anexos.length > 0) {
-        doc.addPage('a4', 'p');
-        var ax = 12;
-        var aw = 186;
-        var ay = 12;
-        var cardGap = 7;
-        var cardH = 84;
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(70, 70, 70);
-        doc.text('ANEXO FOTOGRAFICO', 105, ay + 3, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-        ay += 8;
-
-        for (var ai = 0; ai < anexos.length; ai++) {
-            var cardY = ay + (ai * (cardH + cardGap));
-            doc.setDrawColor(120, 120, 120);
-            doc.rect(ax, cardY, aw, cardH);
-            doc.setFillColor(118, 118, 118);
-            doc.rect(ax, cardY, aw, 8, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(9);
-            doc.text(anexos[ai].titulo, ax + (aw / 2), cardY + 5.4, { align: 'center' });
-            doc.setTextColor(0, 0, 0);
-
-            var imgPadX = 4;
-            var imgPadY = 11;
-            var imgW = aw - (imgPadX * 2);
-            var imgH = cardH - imgPadY - 3;
-            drawImageContain(anexos[ai].dataUrl, ax + imgPadX, cardY + imgPadY, imgW, imgH);
-        }
-    }
-
-    try {
-        var blob = doc.output('blob');
-        var url = URL.createObjectURL(blob);
-        var modal = document.getElementById('modal-pdf-ver');
-        var iframe = document.getElementById('modal-pdf-iframe');
-        var linkDescarga = document.getElementById('modal-pdf-descargar');
-        var btnCerrar = document.getElementById('modal-pdf-cerrar');
-        var focusBackEl = openerEl || document.activeElement;
-        if (modal && iframe) {
-            if (window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
-            window._pdfBlobUrl = url;
-            iframe.src = url + '#page=1&zoom=page-width';
-            if (linkDescarga) {
-                linkDescarga.href = url;
-                linkDescarga.download = 'Reporte-QBerries.pdf';
-            }
-            modal.style.display = 'flex';
-            modal.classList.add('modal-pdf-abierto');
-            modal.setAttribute('aria-hidden', 'false');
-            modalPdfAbierto = true;
-            generandoPdf = false;
-            if (btnCerrar && typeof btnCerrar.focus === 'function') {
-                setTimeout(() => btnCerrar.focus(), 0);
-            }
-            function cerrarModalPdf() {
-                bloquearAperturaPdfHasta = Date.now() + 900;
-                var activeEl = document.activeElement;
-                if (activeEl && modal.contains(activeEl) && typeof activeEl.blur === 'function') {
-                    activeEl.blur();
-                }
-                modal.style.display = 'none';
-                modal.classList.remove('modal-pdf-abierto');
-                modal.setAttribute('aria-hidden', 'true');
-                modalPdfAbierto = false;
-                iframe.src = 'about:blank';
-                if (window._pdfBlobUrl) {
-                    URL.revokeObjectURL(window._pdfBlobUrl);
-                    window._pdfBlobUrl = null;
-                }
-                if (focusBackEl && typeof focusBackEl.focus === 'function') {
-                    setTimeout(() => focusBackEl.focus(), 0);
-                }
-            }
-            if (btnCerrar) {
-                btnCerrar.onclick = function (e) {
-                    if (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                    cerrarModalPdf();
-                };
-            }
-            modal.onclick = function (e) { if (e.target === modal) cerrarModalPdf(); };
-        } else {
-            generandoPdf = false;
-            window.open(URL.createObjectURL(blob), '_blank');
-        }
-    } catch (e) {
-        generandoPdf = false;
-        doc.save('Reporte-QBerries.pdf');
-    }
+    return Promise.resolve(doc.output('blob'));
 }
 
-window.addEventListener('beforeunload', (e) => {
-    if (formTieneDatos()) {
-        e.preventDefault();
-        e.returnValue = '¿Estás seguro? Se va a perder la información no guardada si refrescas o cierras.';
-    }
-});
+function generarImagenBlob() {
+    if (typeof html2canvas === 'undefined') return Promise.resolve(null);
+    const el = document.getElementById('proforma-content');
+    if (!el) return Promise.resolve(null);
+    return html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+    }).then(canvas => {
+        return new Promise(resolve => {
+            canvas.toBlob(blob => resolve(blob || null), 'image/png', 0.95);
+        });
+    }).catch(() => null);
+}
 
-if ('serviceWorker' in navigator && !window.location.hostname.match(/127\.0\.0\.1|localhost/)) {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+function abrirSweetAlertOpciones() {
+    const hasSwal = typeof Swal !== 'undefined';
+    if (!hasSwal) {
+        if (window.jspdf && window.jspdf.jsPDF) {
+            generarPDFBlob().then(blob => {
+                if (blob) window.open(URL.createObjectURL(blob), '_blank');
+            });
+        }
+        return;
+    }
+
+    Swal.fire({
+        title: 'Proforma lista',
+        html: 'Elige una opción:',
+        icon: 'info',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Enviar a WhatsApp',
+        denyButtonText: 'Ver PDF',
+        cancelButtonText: 'Limpiar',
+        confirmButtonColor: VERDE,
+        denyButtonColor: DORADO,
+        cancelButtonColor: '#666'
+    }).then(result => {
+        if (result.isDismissed && result.dismiss === 'cancel') {
+            limpiarForm();
+            Swal.fire({ title: 'Listo', text: 'Formulario limpiado.', icon: 'success', confirmButtonColor: VERDE });
+            return;
+        }
+        if (result.isConfirmed) {
+            enviarAWhatsApp();
+            return;
+        }
+        if (result.isDenied) {
+            verPDF();
+        }
+    });
+}
+
+function verPDF() {
+    generarPDFBlob().then(blob => {
+        if (!blob) {
+            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo generar el PDF.', icon: 'error', confirmButtonColor: VERDE });
+            else alert('No se pudo generar el PDF.');
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        window.open(url + '#zoom=page-width', '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    });
+}
+
+function enviarAWhatsApp() {
+    const shareData = { title: 'Proforma Jardines de la Paz', text: 'Proforma - Jardines de la Paz. Plan Legado Familiar.' };
+    generarPDFBlob().then(pdfBlob => {
+        generarImagenBlob().then(imgBlob => {
+            const file = pdfBlob || imgBlob;
+            if (file) {
+                const f = new File([file], 'Proforma-Jardines-de-la-Paz.' + (pdfBlob ? 'pdf' : 'png'), { type: file.type });
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+                    shareData.files = [f];
+                    navigator.share(shareData).then(() => {
+                        if (typeof Swal !== 'undefined') Swal.fire({ title: 'Enviado', text: 'Compartido correctamente.', icon: 'success', confirmButtonColor: VERDE });
+                    }).catch(() => abrirEnlaceWa(shareData.text));
+                } else {
+                    const url = URL.createObjectURL(file);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Proforma-Jardines-de-la-Paz.' + (pdfBlob ? 'pdf' : 'png');
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    abrirEnlaceWa(shareData.text);
+                    if (typeof Swal !== 'undefined') Swal.fire({
+                        title: 'Descarga lista',
+                        text: 'Se descargó el archivo. Abriendo WhatsApp para que puedas enviarlo.',
+                        icon: 'success',
+                        confirmButtonColor: VERDE
+                    });
+                }
+            } else {
+                abrirEnlaceWa(shareData.text);
+            }
+        });
+    });
+}
+
+function abrirEnlaceWa(texto) {
+    const t = encodeURIComponent(texto || 'Proforma Jardines de la Paz');
+    window.open('https://wa.me/?text=' + t, '_blank');
+}
+
+// Estado de conexión
+updateUI();
+window.addEventListener('online', () => updateUI());
+window.addEventListener('offline', () => updateUI());
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js')
+        .then(() => {})
+        .catch(() => {});
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    initReporteForm();
-
-        if (window.lucide) lucide.createIcons();
-
-    const form = document.getElementById('seguridad-form');
-    const btnPdf = document.getElementById('btn-ver-pdf');
-    const firmaFotoInput = document.getElementById('rep_firma_foto');
-    const firmaFotoNombre = document.getElementById('rep_firma_foto_nombre');
-    if (btnPdf) {
-        btnPdf.addEventListener('click', (e) => {
-            if (Date.now() < bloquearAperturaPdfHasta) return;
-            if (modalPdfAbierto || generandoPdf) return;
-            generarPDFReporte(e.currentTarget);
-        });
+    cargarProforma();
+    updateDisplays();
+    const container = document.getElementById('proforma-content');
+    let saveTimeout;
+    function guardarConRetraso() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(guardarProforma, 200);
     }
-    if (firmaFotoInput) {
-        firmaFotoInput.addEventListener('change', () => {
-            const file = firmaFotoInput.files && firmaFotoInput.files[0];
-            if (!file) {
-                firmaImagenDataUrl = '';
-                if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
-                return;
+    if (container) {
+        container.addEventListener('input', () => { updateDisplays(); guardarConRetraso(); });
+        container.addEventListener('change', () => { updateDisplays(); guardarProforma(); });
+    }
+    window.addEventListener('beforeunload', guardarProforma);
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') guardarProforma();
+    });
+    setTimeout(guardarProforma, 500);
+
+    const btn = document.getElementById('btn-generate');
+    if (btn) {
+        btn.addEventListener('click', () => abrirSweetAlertOpciones());
+    }
+
+    const btnAddCelda = document.getElementById('btn-add-celda');
+    if (btnAddCelda) {
+        btnAddCelda.addEventListener('click', agregarCeldaCuota480);
+    }
+
+    const btnAddCuotaRow = document.getElementById('btn-add-cuota-row');
+    if (btnAddCuotaRow) {
+        btnAddCuotaRow.addEventListener('click', agregarFilaCuota);
+    }
+    const proformaContent = document.getElementById('proforma-content');
+    if (proformaContent) {
+        proformaContent.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-delete-cuota-row');
+            if (!btn) return;
+            const row = btn.closest('.cuota-item');
+            if (row && !row.classList.contains('cuota-item-total')) {
+                row.remove();
+                updateDisplays();
+                guardarProforma();
             }
-            const reader = new FileReader();
-            reader.onload = async () => {
-                const raw = typeof reader.result === 'string' ? reader.result : '';
-                firmaImagenDataUrl = await recortarFirmaDataUrl(raw);
-                if (firmaFotoNombre) firmaFotoNombre.textContent = file.name || 'Firma cargada';
-            };
-            reader.onerror = () => {
-                firmaImagenDataUrl = '';
-                if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-    if (form) {
-        form.addEventListener('input', () => { window.formHasChanges = formTieneDatos(); });
-        form.addEventListener('change', () => { window.formHasChanges = formTieneDatos(); });
-        form.addEventListener('reset', () => {
-            firmaImagenDataUrl = '';
-            if (firmaFotoNombre) firmaFotoNombre.textContent = 'Sin imagen';
-            if (firmaFotoInput) firmaFotoInput.value = '';
         });
     }
 
-    const sidebar = document.getElementById('sidebar');
-    const menuBtn = document.getElementById('menu-btn');
-    const closeBtn = document.getElementById('close-btn');
-    const viewHistorial = document.getElementById('view-historial');
-    const viewRecomendaciones = document.getElementById('view-recomendaciones');
-
-    if (menuBtn && sidebar) {
-        menuBtn.addEventListener('click', () => sidebar.classList.add('active'));
-    }
-    if (closeBtn && sidebar) {
-        closeBtn.addEventListener('click', () => sidebar.classList.remove('active'));
-    }
-    // Cerrar sidebar al tocar fuera (móvil y desktop)
-    document.addEventListener('click', (e) => {
-        if (!sidebar || !sidebar.classList.contains('active')) return;
-        const clickedInsideSidebar = sidebar.contains(e.target);
-        const clickedMenuBtn = menuBtn && menuBtn.contains(e.target);
-        if (!clickedInsideSidebar && !clickedMenuBtn) {
-            sidebar.classList.remove('active');
-        }
-    });
-
-    function renderHistorialTable() {
-        const tbody = document.getElementById('historial-tabla-body');
-        const sinDatos = document.getElementById('historial-sin-datos');
-        const wrapper = document.querySelector('.historial-table-wrapper');
-        if (!tbody) return;
-        const entries = getHistorialEntries();
-        tbody.innerHTML = '';
-        if (entries.length === 0) {
-            if (sinDatos) sinDatos.style.display = 'block';
-            if (wrapper) wrapper.style.display = 'none';
-                } else {
-            if (sinDatos) sinDatos.style.display = 'none';
-            if (wrapper) wrapper.style.display = 'block';
-            entries.forEach(e => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + (e.fechaHora || '') + '</td><td>' + (e.dispositivo || '') + '</td>';
-                tbody.appendChild(tr);
-            });
-        }
-        if (window.lucide) window.lucide.createIcons();
-    }
-
-    function showView(viewId) {
-        if (form) form.style.display = viewId === 'nueva' ? '' : 'none';
-        if (viewHistorial) {
-            viewHistorial.style.display = viewId === 'historial' ? 'block' : 'none';
-            if (viewId === 'historial') renderHistorialTable();
-        }
-        if (viewRecomendaciones) viewRecomendaciones.style.display = viewId === 'recomendaciones' ? 'block' : 'none';
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.toggle('active', link.getAttribute('data-view') === viewId);
+    const btnSaldoInfo = document.getElementById('btn-saldo-info');
+    if (btnSaldoInfo) {
+        btnSaldoInfo.addEventListener('click', function() {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: '¿De qué trata?',
+                    text: 'Solo el monto está dividido en partes; lo demás no. La suma nunca debe pasar el monto principal.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: VERDE
+                });
+            } else {
+                alert('Solo el monto está dividido en partes; lo demás no. La suma nunca debe pasar el monto principal.');
+            }
         });
-        if (sidebar) sidebar.classList.remove('active');
     }
 
-    window.addEventListener('historial-updated', renderHistorialTable);
-
-    // Acordeón Recomendaciones: abrir/cerrar cada tarjeta
-    document.querySelectorAll('.recom-card-header').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const card = btn.closest('.recom-card');
-            if (!card) return;
-            const isClosed = card.classList.toggle('recom-card--closed');
-            btn.setAttribute('aria-expanded', !isClosed);
-        });
-    });
-
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const view = link.getAttribute('data-view');
-            if (view) showView(view);
-        });
-    });
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 });

@@ -2,312 +2,158 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Actos y/o Condiciones Inseguras - QBerries</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Proforma - Jardines de la Paz</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#27ae60">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2327ae60'/%3E%3Ctext x='16' y='22' font-family='system-ui,Arial,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#1a4731">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a4731'/%3E%3Ctext x='16' y='22' font-family='system-ui,Arial,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EJ%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="librerias/sweetalert2.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <nav id="sidebar" class="sidebar">
-        <div class="sidebar-header sidebar-header-qberries">
-            <div class="brand brand-qberries-text">
-                <img src="../Logo.png" alt="QBerries" class="sidebar-logo-image">
+    <div id="main-container" class="main-container-jdp">
+        <header class="header-jdp">
+            <div class="header-jdp-inner">
+                <h1>Jardines de la Paz</h1>
+                <p class="tagline-jdp">Plan Legado Familiar: Protección Hoy, Paz Mañana</p>
             </div>
-            <button id="close-btn" class="icon-btn" title="Cerrar menú">
-                <i data-lucide="x-circle"></i>
-            </button>
-        </div>
-        <ul>
-            <li><a href="#" class="active nav-link" data-view="nueva"><i data-lucide="plus-circle"></i> Nuevo Reporte</a></li>
-            <li><a href="#" class="nav-link" data-view="historial"><i data-lucide="history"></i> Historial</a></li>
-            <li><a href="#" class="nav-link" data-view="recomendaciones"><i data-lucide="info"></i> Recomendaciones</a></li>
-        </ul>
-        <div class="sidebar-version">Versión 1.1.0</div>
-    </nav>
-
-    <main class="main-content">
-        <header>
-            <button id="menu-btn" class="menu-btn menu-btn-with-logo">
-                <i data-lucide="menu"></i>
-                <img src="../Logo2.png" alt="QBerries" class="menu-logo-image">
-            </button>
-            <h1>Reporte de Actos y/o Condiciones Inseguras</h1>
-            <div id="network-status-container" class="status-card online">
-                <div class="status-info">
-                    <span id="status-dot">●</span>
-                    <span id="status-text">En línea</span>
-                </div>
-                <span id="pending-count">Pendientes: 0</span>
+            <div id="network-status-container" class="status-card-jdp online">
+                <span id="status-dot">●</span>
+                <span id="status-text">En línea</span>
             </div>
         </header>
-        
-        <form id="seguridad-form" class="reporte-qberries">
-            <div class="form-header-qb">
-                <div class="form-header-col">
-                    <label for="rep_codigo">Código:</label>
-                    <input type="text" id="rep_codigo" name="rep_codigo" required>
-                </div>
-                <div class="form-header-col">
-                    <label for="rep_version">Versión:</label>
-                    <input type="text" id="rep_version" name="rep_version" required>
-                </div>
-                <div class="form-header-col">
-                    <label for="rep_aprobacion">Aprobación:</label>
-                    <input type="text" id="rep_aprobacion" name="rep_aprobacion" required>
-                </div>
-            </div>
 
-            <div class="field-row">
-                <label>Origen</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="rep_tercero" id="rep_tercero" value="1"> TERCERO</label>
-                    <label><input type="checkbox" name="rep_propio" id="rep_propio" value="1"> PROPIO</label>
-                </div>
-            </div>
+        <main class="proforma-wrap">
+            <div id="proforma-content" class="proforma-content">
+                <div class="proforma-document">
+                    <h2 class="proforma-title">PROFORMA</h2>
 
-            <div class="field-row">
-                <label>NOMBRE DE LA EMPRESA CONTRATISTA / ÁREA</label>
-                <input type="text" id="rep_area" name="rep_area" placeholder="Nombre de la empresa o área">
-            </div>
-
-            <div class="field-row">
-                <label>FECHA</label>
-                <div class="rep-fecha-wrap">
-                    <input type="date" id="rep_fecha" name="rep_fecha" required class="rep-fecha-input">
-                    <span id="rep_fecha_display" class="rep-fecha-display" aria-hidden="true">dd/mm/aaaa</span>
-                    <label for="rep_fecha" class="rep-fecha-icon-wrap" aria-label="Abrir calendario">
-                        <i data-lucide="calendar" class="rep-fecha-icon" aria-hidden="true"></i>
-                    </label>
-                </div>
-            </div>
-
-            <div class="field-row">
-                <label>LUGAR DE OCURRENCIA (ESPECIFICAR EL LUGAR EXACTO)</label>
-                <input type="text" id="rep_lugar" name="rep_lugar" placeholder="Especifique el lugar exacto">
-            </div>
-
-            <div class="field-row">
-                <label>NOMBRE DE LA PERSONA REPORTADA</label>
-                <input type="text" id="rep_persona" name="rep_persona" placeholder="Nombre completo">
-            </div>
-
-            <div class="section-bar">CLASIFICACIÓN</div>
-            <div class="field-row">
-                <label style="margin-bottom: 10px;">SEGURIDAD Y SALUD</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="rep_acto" id="rep_acto" value="1"> ACTO</label>
-                    <label><input type="checkbox" name="rep_condicion" id="rep_condicion" value="1"> CONDICIÓN</label>
-                    <label><input type="checkbox" name="rep_incidente" id="rep_incidente" value="1"> INCIDENTE</label>
-                </div>
-            </div>
-            <div class="field-row">
-                <label style="margin-bottom: 10px;">MEDIO AMBIENTE</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="rep_aspecto" id="rep_aspecto" value="1"> ASPECTO</label>
-                    <label><input type="checkbox" name="rep_impacto" id="rep_impacto" value="1"> IMPACTO</label>
-                </div>
-            </div>
-
-            <div class="section-bar">CAUSA</div>
-            <div class="causa-columns">
-                <div class="checkbox-group" style="flex-direction: column; align-items: flex-start;">
-                    <label><input type="checkbox" name="rep_causa_orden" id="rep_causa_orden" value="1"> Orden y Limpieza</label>
-                    <label><input type="checkbox" name="rep_causa_herramientas" id="rep_causa_herramientas" value="1"> Herramientas, Materiales y Equipos</label>
-                    <label><input type="checkbox" name="rep_causa_ergonomia" id="rep_causa_ergonomia" value="1"> Ergonomía</label>
-                    <label><input type="checkbox" name="rep_causa_productos" id="rep_causa_productos" value="1"> Productos Peligrosos</label>
-                    <label><input type="checkbox" name="rep_causa_residuos" id="rep_causa_residuos" value="1"> Segregación de residuos</label>
-                </div>
-                <div class="checkbox-group" style="flex-direction: column; align-items: flex-start;">
-                    <label><input type="checkbox" name="rep_causa_analisis" id="rep_causa_analisis" value="1"> Análisis de tareas</label>
-                    <label><input type="checkbox" name="rep_causa_epp" id="rep_causa_epp" value="1"> Equipo de Protección Personal</label>
-                    <label><input type="checkbox" name="rep_causa_conduccion" id="rep_causa_conduccion" value="1"> Conducción de vehículos</label>
-                    <label><input type="checkbox" name="rep_causa_infra" id="rep_causa_infra" value="1"> Infraestructura</label>
-                    <label><input type="checkbox" name="rep_causa_ambiental" id="rep_causa_ambiental" value="1"> Práctica Ambiental Inadecuada</label>
-                    <label><input type="checkbox" name="rep_causa_otros" id="rep_causa_otros" value="1"> Otros</label>
-                </div>
-            </div>
-
-            <div class="section-bar">DESCRIPCIÓN DEL EVENTO (¿Qué pasó?)</div>
-            <div class="field-row">
-                <div class="textarea-wrap">
-                    <textarea id="rep_descripcion" name="rep_descripcion" rows="4" placeholder="Describa lo sucedido..."></textarea>
-                    <div class="foto-nombre-row">
-                        <input type="text" id="rep_foto_nombre_descripcion" class="foto-nombre-input" readonly disabled placeholder="Nombre de la foto" title="Solo visual: nombre del archivo de la foto">
-                        <input type="file" id="rep_foto_descripcion" class="hidden-file-input" accept="image/*" aria-label="Subir foto o elegir de galería">
-                        <label for="rep_foto_descripcion" class="foto-label">FOTO</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-bar">ACCIÓN INMEDIATA (¿Qué se hizo en el momento para reducir el riesgo?)</div>
-            <div class="field-row">
-                <div class="textarea-wrap">
-                    <textarea id="rep_accion" name="rep_accion" rows="4" placeholder="Indique la acción tomada..."></textarea>
-                    <div class="foto-nombre-row">
-                        <input type="text" id="rep_foto_nombre_accion" class="foto-nombre-input" readonly disabled placeholder="Nombre de la foto" title="Solo visual: nombre del archivo de la foto">
-                        <input type="file" id="rep_foto_accion" class="hidden-file-input" accept="image/*" aria-label="Subir foto o elegir de galería">
-                        <label for="rep_foto_accion" class="foto-label">FOTO</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-bar">RECOMENDACIÓN (¿Qué se debería hacer para evitar su repetición?)</div>
-            <div class="field-row">
-                <div class="textarea-wrap">
-                    <textarea id="rep_recomendacion" name="rep_recomendacion" rows="4" placeholder="Recomendaciones..."></textarea>
-                    <div class="foto-nombre-row">
-                        <input type="text" id="rep_foto_nombre_recomendacion" class="foto-nombre-input" readonly disabled placeholder="Nombre de la foto" title="Solo visual: nombre del archivo de la foto">
-                        <input type="file" id="rep_foto_recomendacion" class="hidden-file-input" accept="image/*" aria-label="Subir foto o elegir de galería">
-                        <label for="rep_foto_recomendacion" class="foto-label">FOTO</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-footer-qb">
-                <div class="field-row">
-                    <label>NOMBRE DEL REPORTANTE</label>
-                    <input type="text" id="rep_reportante" name="rep_reportante" placeholder="Nombre completo">
-                </div>
-                <div class="field-row">
-                    <label>FIRMA</label>
-                    <div class="firma-upload-row">
-                        <input type="file" id="rep_firma_foto" class="firma-file-input" accept="image/*" aria-label="Subir imagen de firma">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-actions-row">
-                <button type="button" id="btn-guardar-registro" class="btn-guardar-qb">
-                    <span class="btn-guardar-text">GUARDAR REPORTE</span>
-                    <span id="spinner_guardar" class="loading-spinner btn-spinner" style="display: none;"></span>
-                </button>
-                <button type="button" id="btn-ver-pdf" class="btn-ver-pdf-qb btn-pdf-icon-only" aria-label="Ver PDF">
-                    <i data-lucide="file-text" aria-hidden="true"></i>
-                </button>
-            </div>
-        </form>
-
-        <!-- Modal para ver la foto -->
-        <div id="modal-foto-ver" class="modal-foto-overlay" aria-hidden="true">
-            <div class="modal-foto-content">
-                <img id="modal-foto-img" src="" alt="Foto">
-                <button type="button" class="modal-foto-cerrar" aria-label="Cerrar">Cerrar</button>
-            </div>
-        </div>
-
-        <!-- Modal Ver PDF (misma página, descargar dentro) -->
-        <div id="modal-pdf-ver" class="modal-pdf-overlay" aria-hidden="true" style="display: none;">
-            <div class="modal-pdf-content">
-                <div class="modal-pdf-header">
-                    <h3>Vista previa del reporte (PDF)</h3>
-                    <div class="modal-pdf-actions">
-                        <a id="modal-pdf-descargar" href="#" download="Reporte-QBerries.pdf" class="btn-descargar-pdf">Descargar PDF</a>
-                        <button type="button" id="modal-pdf-cerrar" class="modal-pdf-cerrar" aria-label="Cerrar">Cerrar</button>
-                    </div>
-                </div>
-                <iframe id="modal-pdf-iframe" title="Vista previa PDF" class="modal-pdf-iframe"></iframe>
-            </div>
-        </div>
-
-        <!-- Vista Historial -->
-        <section id="view-historial" style="display: none; margin-top: 20px;">
-            <div class="historial-page">
-                <h2 class="historial-title"><i data-lucide="history"></i> Historial de envíos</h2>
-                <p class="historial-desc">Envíos realizados desde esta app: hora de subida y equipo o celular desde el que se envió.</p>
-                <div class="historial-table-wrapper">
-                    <table class="historial-table" id="historial-tabla-envios">
-                        <thead>
-                            <tr>
-                                <th>Hora de subida</th>
-                                <th>Equipo / Dispositivo</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historial-tabla-body">
-                            <!-- Se llena por JS desde localStorage -->
-                        </tbody>
-                    </table>
-                </div>
-                <p id="historial-sin-datos" class="historial-sin-datos" style="display: none;">Aún no hay envíos registrados desde este dispositivo.</p>
-            </div>
-        </section>
-
-        <!-- Recomendaciones -->
-        <section id="view-recomendaciones" style="display: none; margin-top: 20px;">
-            <div class="recomendaciones-page">
-                <header class="recomendaciones-header">
-                    <h2><i data-lucide="info"></i> Recomendaciones de Uso</h2>
-                    <p>En caso de error o para soporte técnico, comuníquese con el <strong>desarrollador TI</strong>.</p>
-                </header>
-                <div class="recomendaciones-grid">
-                    <article class="recom-card">
-                        <button type="button" class="recom-card-header" aria-expanded="true" aria-controls="recom-body-1">
-                            <i data-lucide="alert-triangle"></i>
-                            <h3>Manejo de Datos</h3>
-                            <i data-lucide="chevron-down" class="recom-card-chevron" aria-hidden="true"></i>
-                        </button>
-                        <div id="recom-body-1" class="recom-card-body">
-                        <div class="recom-card-body">
-                            <div class="recom-warning-box">
-                                <p><strong>No refresque la página</strong> mientras complete el formulario o guarde datos. Se puede perder la información no guardada.</p>
+                    <div class="proforma-grid">
+                        <div class="proforma-grid-row proforma-row-inline">
+                            <label for="pro_lote" class="proforma-label">Lote doble encofrado</label>
+                            <span class="proforma-arrow" aria-hidden="true">-----></span>
+                            <div class="proforma-value-box">
+                                <input type="number" id="pro_lote" name="pro_lote" value="8570" min="0" step="1" aria-label="Monto lote doble encofrado">
                             </div>
-                            <ul class="recom-list">
-                                <li><strong>Guarde con frecuencia:</strong> Use el botón "GUARDAR REPORTE" al terminar cada reporte.</li>
-                                <li><strong>Revise antes de enviar:</strong> Verifique que todos los datos ingresados sean correctos.</li>
-                                <li><strong>Conexión:</strong> Se requiere internet para enviar el reporte al servidor.</li>
-                            </ul>
                         </div>
-                    </article>
-                    <article class="recom-card">
-                        <button type="button" class="recom-card-header" aria-expanded="true" aria-controls="recom-body-2">
-                            <i data-lucide="upload-cloud"></i>
-                            <h3>Sincronización</h3>
-                            <i data-lucide="chevron-down" class="recom-card-chevron" aria-hidden="true"></i>
-                        </button>
-                        <div id="recom-body-2" class="recom-card-body">
-                            <ul class="recom-list">
-                                <li><strong>Envío:</strong> Al guardar con conexión, el reporte se envía de inmediato.</li>
-                                <li><strong>Historial:</strong> En la pestaña Historial puede ver la hora y el dispositivo de cada envío.</li>
-                            </ul>
+                        <div class="proforma-grid-row proforma-row-inline">
+                            <label for="pro_servicio" class="proforma-label">Servicio funerario estándar</label>
+                            <span class="proforma-arrow" aria-hidden="true">-----></span>
+                            <div class="proforma-value-box">
+                                <input type="number" id="pro_servicio" name="pro_servicio" value="2148" min="0" step="1" aria-label="Monto servicio funerario">
+                            </div>
                         </div>
-                    </article>
-                    <article class="recom-card">
-                        <button type="button" class="recom-card-header" aria-expanded="true" aria-controls="recom-body-3">
-                            <i data-lucide="help-circle"></i>
-                            <h3>Contacto / Soporte</h3>
-                            <i data-lucide="chevron-down" class="recom-card-chevron" aria-hidden="true"></i>
-                        </button>
-                        <div id="recom-body-3" class="recom-card-body">
-                            <p class="recom-contacto">Ante cualquier error, fallo de la aplicación o necesidad de soporte, comuníquese con el <strong>desarrollador TI</strong>. No intente resolver problemas técnicos por su cuenta.</p>
+                        <div class="proforma-grid-row proforma-row-inline proforma-total-row">
+                            <span class="proforma-label proforma-label-bold">Total</span>
+                            <span class="proforma-arrow" aria-hidden="true">-----></span>
+                            <div class="proforma-value-box">
+                                <span id="pro_total_display" class="value-display">10718</span>
+                            </div>
                         </div>
-                    </article>
-                    <article class="recom-card">
-                        <button type="button" class="recom-card-header" aria-expanded="true" aria-controls="recom-body-4">
-                            <i data-lucide="check-circle"></i>
-                            <h3>Mejores Prácticas</h3>
-                            <i data-lucide="chevron-down" class="recom-card-chevron" aria-hidden="true"></i>
-                        </button>
-                        <div id="recom-body-4" class="recom-card-body">
-                            <ul class="recom-list">
-                                <li>Complete todos los campos obligatorios (marcados con *).</li>
-                                <li>Use nombres y códigos correctos según su área.</li>
-                                <li>Mantenga la aplicación actualizada en su dispositivo.</li>
-                                <li>Reporte errores o comportamientos extraños al desarrollador TI.</li>
-                            </ul>
+                        <div class="proforma-grid-row proforma-row-inline">
+                            <label for="pro_descuento" class="proforma-label">Descuento SIS (Deuda pend.)</label>
+                            <span class="proforma-arrow" aria-hidden="true">-----></span>
+                            <div class="proforma-value-box">
+                                <input type="number" id="pro_descuento" name="pro_descuento" value="-1000" step="1" aria-label="Descuento SIS">
+                            </div>
                         </div>
-                    </article>
+                    </div>
+
+                    <div class="proforma-box proforma-box-total">
+                        <span class="box-label">Total con descuento</span>
+                        <input type="number" id="pro_neto_display" class="box-value box-value-input input-num-center" value="9718" min="0" step="1" readonly aria-label="Total con descuento (solo lectura)" style="text-align:center">
+                    </div>
+
+                    <div class="proforma-box proforma-box-inicial">
+                        <span class="box-label">Inicial:</span>
+                        <input type="number" id="pro_inicial" name="pro_inicial" value="1052" min="0" step="1" aria-label="Monto inicial">
+                    </div>
+
+                    <div class="saldo-section-wrap">
+                    <div class="proforma-section saldo-section saldo-section-box">
+                        <div class="saldo-section-header">
+                            <span class="section-label">Saldo:</span>
+                            <span class="saldo-header-actions">
+                                <button type="button" id="btn-add-cuota-row" class="btn-add-cuota-row" title="Agregar opción de cuotas" aria-label="Agregar opción"><i data-lucide="plus"></i></button>
+                                <button type="button" id="btn-saldo-info" class="btn-saldo-info" title="¿De qué trata?" aria-label="Ver nota explicativa"><i data-lucide="info"></i></button>
+                            </span>
+                        </div>
+                        <div class="cuotas-row cuotas-row-stack">
+                            <div id="cuotas-extra-container" class="cuotas-extra-container"></div>
+                            <span class="cuota-item cuota-item-deletable">
+                                <input type="number" id="pro_cuotas_18" value="18" min="1" class="cuota-num" aria-label="Número de cuotas">
+                                <span class="cuota-label"><span class="cuota-label-text" data-for="pro_cuotas_18">cuotas</span> <span class="cuota-arrow">---></span></span>
+                                <input type="number" id="pro_monto_18" value="209" min="0" class="cuota-monto" aria-label="Monto cuota">
+                                <button type="button" class="btn-delete-celda btn-delete-cuota-row" title="Eliminar" aria-label="Eliminar opción"><i data-lucide="trash-2"></i></button>
+                            </span>
+                            <span class="cuota-item cuota-item-deletable">
+                                <input type="number" id="pro_cuotas_28" value="28" min="1" class="cuota-num input-num-center" aria-label="Número de cuotas" style="text-align:center">
+                                <span class="cuota-label"><span class="cuota-label-text" data-for="pro_cuotas_28">cuotas</span> <span class="cuota-arrow">---></span></span>
+                                <input type="number" id="pro_monto_28" value="158" min="0" class="cuota-monto" aria-label="Monto cuota">
+                                <button type="button" class="btn-delete-celda btn-delete-cuota-row" title="Eliminar" aria-label="Eliminar opción"><i data-lucide="trash-2"></i></button>
+                            </span>
+                            <span class="cuota-item cuota-item-destacado cuota-item-con-celdas">
+                                <input type="number" id="pro_cuotas_01" value="1" min="0" class="cuota-num" aria-label="Número de cuotas">
+                                <span class="cuota-label"><span class="cuota-label-text" data-for="pro_cuotas_01">cuota</span> <span class="cuota-arrow">---></span></span>
+                                <input type="number" id="pro_monto_01" value="480" min="0" class="cuota-monto pro-monto-destacado" aria-label="Monto cuota">
+                                <span class="cuota-icon-y-celdas">
+                                    <button type="button" id="btn-add-celda" class="btn-add-celda" title="Agregar celda" aria-label="Agregar celda"><i data-lucide="plus"></i></button>
+                                    <div id="cuota-celdas-container" class="cuota-celdas-container"></div>
+                                </span>
+                            </span>
+                            <div class="cuota-separator" aria-hidden="true"></div>
+                            <span class="cuota-item cuota-extra cuota-item-total">
+                                <input type="number" id="pro_cuotas_47" name="pro_cuotas_47" value="47" min="0" class="cuota-num" aria-label="Total cuotas (suma)">
+                                <span class="cuota-label">Cuotas</span>
+                            </span>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div class="proforma-box proforma-box-terms">
+                        <div class="term-row term-row-box">
+                            <span class="box-label">Periodo de carencia</span>
+                            <input type="number" id="pro_carencia" value="30" min="0" class="box-value box-value-input term-input-col" aria-label="Días de carencia">
+                            <span class="term-unit">Días</span>
+                        </div>
+                        <div class="term-row term-row-box">
+                            <span class="box-label">Reintegro:</span>
+                            <input type="number" id="pro_reintegro" value="1400" min="0" class="box-value box-value-input term-input-col" aria-label="Reintegro">
+                            <span class="term-unit">Soles</span>
+                        </div>
+                        <div class="term-row term-row-box">
+                            <span class="box-label">CUA:</span>
+                            <input type="number" id="pro_cua" value="600" min="0" class="box-value box-value-input term-input-col" aria-label="CUA">
+                            <span class="term-unit">Soles</span>
+                        </div>
+                        <p class="term-note">se paga cuando se usa el espacio</p>
+                    </div>
+
+                    <div class="proforma-box proforma-box-asesora">
+                        <div class="asesora-row">
+                            <label for="pro_asesora" class="asesora-label">Asesora comercial:</label>
+                            <input type="text" id="pro_asesora" name="pro_asesora" value="Guadalupe Antunez" readonly aria-label="Nombre asesora (solo lectura)">
+                        </div>
+                        <div class="asesora-row">
+                            <label for="pro_telefono" class="asesora-label">Teléfono:</label>
+                            <input type="tel" id="pro_telefono" name="pro_telefono" value="966192366" readonly aria-label="Teléfono (solo lectura)">
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
-    </main>
+
+            <div class="proforma-actions">
+                <button type="button" id="btn-generate" class="btn-generate-jdp">Generar proforma</button>
+            </div>
+        </main>
+    </div>
 
     <script src="librerias/sweetalert2.all.min.js"></script>
     <script src="librerias/lucide.min.js"></script>
     <script src="librerias/jspdf.umd.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';document.head.appendChild(s);"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>

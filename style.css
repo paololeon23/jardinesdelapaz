@@ -1,2161 +1,1313 @@
-:root {
-    --primary: #2f7cc0;
-    --qberries-red: #c0392b;
-    --qberries-green: #27ae60;
-    --bg: #f4f7f6;
-    --text: #333333;
-    --white: #ffffff;
-    --border: #cccccc;
-    --sidebar-width: 250px;
-}
-
 * { 
     box-sizing: border-box; 
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
 }
 
-body { 
-    margin: 0; 
-    background-color: var(--bg); 
-    color: var(--text); 
-    display: flex; 
-}
-
-/* ========== SIDEBAR ========== */
-.sidebar {
-    height: 100vh;
-    width: var(--sidebar-width);
-    background: #f4f4f4;
-    position: fixed;
-    left: -250px;
-    transition: 0.3s;
-    z-index: 1000;
-    border-right: 2px solid var(--border);
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar.active { 
-    left: 0; 
-}
-
-.sidebar-header { 
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 8px 7px 0px;
-    background: var(--primary); 
-    color: white; 
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-/* Q Berries: header del sidebar — fondo blanco para contraste con el logo */
-.sidebar-header-qberries {
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    color: #2c3e50;
-}
-.sidebar-header-qberries .sidebar-logo {
-    max-height: 48px;
-    width: auto;
-    object-fit: contain;
-}
-.brand-qberries-text {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-weight: 700;
-    font-size: 1.35rem;
-    margin-left: 16px;
-    margin-bottom: 5px;
-}
-.sidebar-logo-image {
-    height: 34px;
-    width: auto;
-    object-fit: contain;
-    display: block;
-}
-.sidebar-logo-q { color: var(--qberries-red); }
-.sidebar-logo-berries { color: var(--qberries-green); }
-.sidebar-header-qberries ~ ul { border-top: none; }
-
-.sidebar-logo {
-    height: 53px;
-    width: auto;
-    object-fit: contain;
-}
-
-#close-btn {
-    background: none;
-    border: none;
-    color: #555;
-    cursor: pointer;
-    transition: transform 0.2s ease, color 0.2s;
-}
-.sidebar-header-qberries #close-btn { color: #555; }
-.sidebar-header-qberries #close-btn:hover { color: var(--qberries-red); }
-
-#close-btn:hover {
-    color: #ff4d4d;
-    transform: scale(1.1);
-}
-
-#close-btn i {
-    width: 28px;
-    height: 28px;
-}
-
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.sidebar-version {
-    flex-shrink: 0;
-    padding: 12px 20px;
-    font-size: 0.75rem;
-    color: #888;
-    border-top: 1px solid var(--border);
-    margin-top: auto;
-}
-@media (max-width: 768px) {
-    .sidebar-version {
-        padding: 10px 16px;
-        font-size: 0.7rem;
-    }
-    .reporte-qberries input[type="date"] {
-        font-size: 16px !important;
-        min-height: 44px;
-        padding: 10px 12px;
-    }
-    .reporte-qberries .rep-fecha-wrap {
-        min-height: 44px;
-    }
-    .reporte-qberries .rep-fecha-display {
-        font-size: 16px;
-        padding: 10px 44px 10px 12px;
-    }
-}
-
-.sidebar ul li a {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 16px 20px;
-    text-decoration: none;
-    color: var(--text);
-    border-bottom: 1px solid var(--border);
-    transition: background 0.2s, border-color 0.2s;
-    border-left: 3px solid transparent;
-}
-.sidebar ul li a i,
-.sidebar ul li a svg {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    color: var(--qberries-green);
-    stroke: var(--qberries-green);
-}
-.sidebar ul li a:hover {
-    background: #e8f5e9;
-    border-left-color: var(--qberries-green);
-}
-.sidebar ul li a:hover i,
-.sidebar ul li a:hover svg {
-    color: var(--qberries-green);
-    stroke: var(--qberries-green);
-}
-.sidebar ul li a.active {
-    background: #e8f5e9;
-    color: #1e8449;
-    font-weight: bold;
-    position: relative;
-    overflow: hidden;
-    border-left-color: var(--qberries-green);
-}
-.sidebar ul li a.active i,
-.sidebar ul li a.active svg {
-    color: var(--qberries-green);
-    stroke: var(--qberries-green);
-}
-
-/* El "mitad de círculo" en la derecha - Q Berries verde */
-.sidebar ul li a.active::after {
-    content: "";
-    position: absolute;
-    right: -15px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 32px;
-    height: 37px;
-    background: var(--qberries-green);
-    border-radius: 50%;
-}
-
-/* ========== CONTENIDO PRINCIPAL ========== */
-.main-content { 
-    flex: 1; 
-    padding: 20px; 
-    width: 100%; 
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-header { 
-    display: flex; 
-    align-items: center; 
-    gap: 20px; 
-    margin-bottom: 18px; 
-    border-bottom: 2px solid #27ae60;
-    padding-bottom: 10px;
-    justify-content: space-between;
-}
-
-/* En escritorio el título puede crecer y centrarse visualmente */
-header h1 {
-    flex: 1;
-    min-width: 0;
-    text-align: center;
-    margin: 0;
-    font-size: 1.5rem;
-    line-height: 1.3;
-}
-
-/* Botón con logo QBerries: fondo blanco para que se vea bien (uso empresa) */
-.menu-btn-with-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff !important;
-    color: #2c3e50;
-    border: 1px solid #27ae60;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-.menu-btn-with-logo:hover {
-    background: #f8f9fa !important;
-    border-color: #27ae60;
-}
-.menu-btn-with-logo i,
-.menu-btn-with-logo svg {
-    color: #c0392b !important;
-    stroke: #c0392b;
-}
-.menu-btn-with-logo .logo-q { color: #c0392b; font-weight: 800; font-size: 1rem; }
-.menu-btn-with-logo .logo-berries { color: #27ae60; font-weight: 700; font-size: 0.9rem; letter-spacing: -0.02em; }
-.menu-btn-with-logo .menu-logo-image {
-    height: 24px;
-    width: auto;
-    object-fit: contain;
-    display: block;
-}
-
-/* INTERN ESTILOS*/
-
-.status-card {
-    display: flex;
-    flex-direction: column; /* Alineación vertical */
-    align-items: center;
-    justify-content: center;
-    padding: 6px 10px;
-    border-radius: 10px;
-    font-size: 0.75rem; /* Un poco más pequeño para que encaje bien */
-    font-weight: bold;
-    border: 1px solid #ddd;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    min-width: 90px;
-    line-height: 1.2;
-}
-
-/* Contenedor para el punto y el texto (Fila superior) */
-.status-info {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
-}
-
-/* El contador de pendientes (Fila inferior) */
-#pending-count {
-    background-color: rgba(0, 0, 0, 0.1); /* Fondo sutil */
-    padding: 2px 6px;
-    border-radius: 6px;
-    width: 100%;
-    text-align: center;
-    font-size: 0.7rem;
-}
-
-/* Estado Online */
-.status-card.online {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border-color: #a5d6a7;
-}
-.status-card.online #status-dot { color: #4caf50; }
-/* En online, el badge de pendientes puede ser azul para resaltar */
-.status-card.online #pending-count {
-    color: rgb(0, 0, 0);
-}
-
-/* Estado Offline */
-.status-card.offline {
-    background-color: #ffebee;
-    color: #c62828;
-    border-color: #ffcdd2;
-}
-.status-card.offline #status-dot { color: #f44336; }
-/* En offline, el badge se pone rojo oscuro */
-.status-card.offline #pending-count {
-    background-color: #c62828;
-    color: white;
-}
-/* fin */
-
-
-.menu-btn { 
-    background: var(--primary); 
-    color: white; 
-    border: none; 
-    padding: 10px 15px; 
-    border-radius: 5px; 
-    cursor: pointer; 
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-/* ========== FORMULARIO ========== */
-.form-group { 
-    background: var(--white);
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    margin-bottom: 20px; 
-}
-
-.row { 
-    display: flex; 
-    gap: 20px; 
-    margin-bottom: 15px; 
-    flex-wrap: wrap; 
-}
-
-.col { 
-    flex: 1; 
-    min-width: 250px;
-}
-
-label { 
-    display: flex; 
-    align-items: center; 
-    font-weight: bold; 
-    margin-bottom: 8px; 
-    font-size: 0.95rem; 
-}
-
-input, select {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid var(--border);
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: 0.3s;
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-    width: auto;
-    padding: 0;
-    border: none;
-}
-
-input:focus, select:focus { 
-    border-color: var(--primary); 
-    outline: none; 
-    box-shadow: 0 0 5px rgba(47, 124, 192, 0.3);
-}
-
-.fechas-con-datos {
-    margin: 6px 0 0;
-    font-size: 0.85rem;
-    color: var(--text-muted, #555);
-    line-height: 1.3;
-}
-
-/* ========== BOTONES ========== */
-.btn-primary-blue {
-    width: 100%;
-    padding: 18px;
-    background-color: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    transition: background 0.3s;
-    margin-top: 10px;
-}
-
-.btn-primary-blue:hover { 
-    background-color: #1e5a8f; 
-}
-
-.btn-add-pro {
-    background: #28a745;
-    color: #fff;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    width: 100%;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-add-pro:hover {
-    background: #218838;
-}
-
-.btn-delete-row {
-    background: none;
-    border: none;
-    color: #e63946;
-    cursor: pointer;
-    padding: 5px;
-    transition: transform 0.2s;
-}
-
-.btn-delete-row:hover {
-    transform: scale(1.2);
-    color: #c1121f;
-}
-
-.btn-delete-row i {
-    width: 20px;
-    height: 20px;
-}
-
-.btn-replicate-row {
-    background: none;
-    border: none;
-    color: #5f6368;
-    cursor: pointer;
-    padding: 5px;
-    transition: transform 0.2s;
-}
-
-.btn-replicate-row:hover {
-    transform: scale(1.2);
-    color: #3c4043;
-}
-
-.btn-replicate-row i {
-    width: 20px;
-    height: 20px;
-}
-
-/* ========== ICONOS LUCIDE ========== */
-.lucide {
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    stroke-width: 2px;
-}
-
-label .lucide { 
-    color: var(--primary); 
-}
-
-/* ========== INPUTS ESPECIALES ========== */
-.input-group-triple {
-    display: flex;
-    gap: 5px;
-}
-
-.input-group-triple select {
-    flex: 1;
-    padding: 12px 5px;
-    border: 2px solid var(--border);
-    border-radius: 4px;
-    background-color: white;
-    font-size: 1rem;
-}
-
-.input-group-triple input {
-    flex: 1.5;
-    text-align: center;
-}
-
-.select-modern {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid var(--border);
-    border-radius: 6px;
-    background-color: white;
-    font-size: 1rem;
-    transition: 0.3s;
-}
-
-.select-modern:focus {
-    border-color: var(--primary);
-    outline: none;
-    box-shadow: 0 0 5px rgba(47, 124, 192, 0.3);
-}
-
-/* ========== CARDS COLAPSABLES ========== */
-.main-card { 
-    border-left: 5px solid var(--primary); 
-}
-
-/* ========== PACKING: bloques separados, sin fondo blanco ========== */
-.packing-container {
-    background: transparent;
-}
-
-/* Fila Fecha + Ensayo en una sola línea (2 columnas + botón) */
-.row-fecha-ensayo {
-    flex-wrap: nowrap;
-    align-items: flex-end;
-}
-.row-fecha-ensayo .col-fecha,
-.row-fecha-ensayo .col-ensayo {
-    min-width: 140px;
-    flex: 1;
-}
-.row-fecha-ensayo .col-btn-cargar {
-    flex: 0 0 auto;
-    min-width: 0;
-}
-@media (max-width: 520px) {
-    .row-fecha-ensayo {
-        flex-wrap: wrap;
-    }
-    .row-fecha-ensayo .col-btn-cargar {
-        width: 100%;
-    }
-}
-
-/* Loading spinner */
-.loading-spinner {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle;
-}
-.loading-spinner.btn-spinner {
-    width: 16px;
-    height: 16px;
-    margin-left: 8px;
-    vertical-align: middle;
-}
-.ensayo-select-wrap {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-.ensayo-select-wrap .loading-spinner {
-    position: absolute;
-    right: 36px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Bloqueo visual al cargar (packing) */
-.packing-fecha-ensayo-row.is-loading,
-#packing_datos_section.is-loading {
-    position: relative;
-    pointer-events: none;
-    user-select: none;
-}
-.packing-fecha-ensayo-row.is-loading::after,
-#packing_datos_section.is-loading::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 10px;
-    z-index: 0;
-}
-.packing-fecha-ensayo-row.is-loading {
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 10px;
-    padding: 12px;
-}
-.btn-cargar-datos:disabled {
-    opacity: 0.85;
-    background: #1a5a8e;
-    cursor: not-allowed;
-}
-
-/* Datos cargados: solo visualización (bloqueo visible, no editables) */
-#packing_datos_section input.view-only,
-#packing_datos_section select.view-only,
-.datos-cargados-solo-lectura input.view-only,
-.datos-cargados-solo-lectura select.view-only {
-    background: #dde2e8 !important;
-    color: #333;
-    cursor: not-allowed;
-    border: 2px solid #b0b8c4;
-    padding: 12px;
-    min-height: 44px;
-    box-sizing: border-box;
-    pointer-events: none;
-    user-select: none;
-    -webkit-appearance: none;
-    appearance: none;
-}
-#packing_datos_section select.view-only,
-.datos-cargados-solo-lectura select.view-only {
-    background-image: none;
-}
-#packing_datos_section input.view-only:focus,
-#packing_datos_section select.view-only:focus,
-.datos-cargados-solo-lectura input.view-only:focus,
-.datos-cargados-solo-lectura select.view-only:focus {
-    outline: none;
-    box-shadow: none;
-    border-color: #b0b8c4;
-}
-.datos-cargados-solo-lectura .view-only-label,
-#packing_datos_section .view-only-label {
-    color: #555;
-    font-size: 1rem;
-}
-
-.view-no-ensayos-msg {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.view-no-ensayos-msg i {
-    flex-shrink: 0;
-}
-
-.collapsible-wrapper {
-    margin-top: 15px;
-    animation: fadeIn 0.3s ease;
-}
-
-.collapsible-card {
-    background: #fff;
-    border-radius: 12px;
-    border: 2px solid #000;
-    overflow: hidden;
-}
-
-.card-header {
-    background: #000;
-    color: #fff;
-    padding: 18px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-}
-
-.card-header span { 
-    font-weight: 800; 
-    letter-spacing: 1px; 
-}
-
-.card-body {
-    padding: 20px;
-    display: none;
-    background: #fdfdfd;
-}
-
-.header-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* ========== ZONA DE INPUTS ========== */
-.input-entry-zone {
-    background: #1a1a1a;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-.input-entry-zone label { 
-    color: #eee; 
-    font-size: 0.75rem;
-    margin-bottom: 4px;
-    white-space: nowrap;
-}
-
-.row-compact {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    flex-wrap: nowrap;
-}
-
-.col-input {
-    flex: 1;
-    min-width: 0;
-}
-
-.col-button-action {
-    flex: 0.8;
-}
-
-/* ========== TABLAS ========== */
-.table-scroll {
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 8px;
-}
-
-.table-pro {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    margin-top: 15px;
-}
-
-.table-pro thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.table-pro th {
-    background: #f8f9fa;
-    color: #000;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    padding: 15px 10px;
-    border-bottom: 3px solid #000;
-}
-
-.table-pro td {
-    padding: 15px 10px;
-    border-bottom: 1px solid #f0f0f0;
-    text-align: center;
-    font-size: 0.95rem;
-    color: #333;
-}
-
-.table-pro tr:nth-child(even) {
-    background-color: #fafafa;
-}
-
-.clam-id {
-    font-weight: bold;
-    color: #2f7cc0;
-    font-size: 1.1rem;
-}
-
-/* ========== EMPTY STATE ========== */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #999;
-}
-
-.empty-state i {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
-}
-
-.empty-state p {
-    font-size: 1.1rem;
-    color: #666;
-}
-
-/* ========== RECOMENDACIONES ========== */
-.recom-section {
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.recom-section:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.recom-section h3 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #1a3d6e;
-    font-size: 1.1rem;
-    margin-bottom: 12px;
-    font-weight: 600;
-}
-
-.recom-section h3 i {
-    width: 20px;
-    height: 20px;
-}
-
-.recom-warning-box {
-    background: #fff3cd;
-    border-left: 4px solid #ffc107;
-    padding: 12px 16px;
-    border-radius: 6px;
-    margin-bottom: 12px;
-}
-
-.recom-warning-box p {
-    margin: 0;
-    color: #856404;
-    font-size: 0.95rem;
-}
-
-.recom-help-box {
-    background: #e3f2fd;
-    border-left: 4px solid #2196f3;
-    padding: 12px 16px;
-    border-radius: 6px;
-}
-
-.recom-help-box p {
-    margin: 6px 0;
-    color: #0d47a1;
-    font-size: 0.95rem;
-}
-
-.recom-help-box p:first-child {
-    margin-top: 0;
-}
-
-.recom-help-box p:last-child {
-    margin-bottom: 0;
-}
-
-.recom-list {
-    list-style: none;
-    padding-left: 0;
-    margin: 0;
-}
-
-.recom-list li {
-    padding: 8px 0 8px 28px;
-    position: relative;
-    line-height: 1.6;
-    color: #333;
-}
-
-.recom-list li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: #4caf50;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-.recom-list li strong {
-    color: #1a3d6e;
-}
-
-/* Recomendaciones - Vista empresarial (cards) */
-.recomendaciones-page {
-    max-width: 920px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 28px 24px;
-    border-radius: 14px;
-    box-shadow: 0 6px 32px rgba(44, 62, 80, 0.06);
-}
-.recomendaciones-header {
-    margin-bottom: 28px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid var(--qberries-green);
-}
-.recomendaciones-header h2 {
-    margin: 0 0 8px 0;
-    font-size: 1.4rem;
-    color: #2c3e50;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.recomendaciones-header h2 i { width: 28px; height: 28px; color: var(--qberries-green); }
-.recomendaciones-header p {
-    margin: 0;
-    color: #666;
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-.recomendaciones-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-}
-.recom-card {
-    background: #fafbfc;
-    border: 1px solid #e8ecf0;
-    border-radius: 10px;
-    overflow: hidden;
-    transition: box-shadow 0.2s, border-color 0.2s;
-}
-.recom-card:hover {
-    border-color: var(--qberries-green);
-    box-shadow: 0 4px 16px rgba(39, 174, 96, 0.12);
-}
-.recom-card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, var(--qberries-green) 0%, #1e8449 100%);
-    color: #fff;
-    border: none;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    font: inherit;
-    transition: background 0.2s;
-}
-.recom-card-header:hover {
-    background: linear-gradient(135deg, #1e8449 0%, #167038 100%);
-}
-.recom-card-header i:not(.recom-card-chevron) { width: 22px; height: 22px; flex-shrink: 0; }
-.recom-card-header h3 {
-    margin: 0;
-    flex: 1;
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-.recom-card-chevron {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    transition: transform 0.25s ease;
-}
-.recom-card.recom-card--closed .recom-card-chevron {
-    transform: rotate(-90deg);
-}
-.recom-card-body {
-    padding: 18px;
-    overflow: hidden;
-    transition: opacity 0.2s ease;
-}
-.recom-card.recom-card--closed .recom-card-body {
-    display: none;
-}
-.recom-card-body .recom-warning-box {
-    margin-bottom: 14px;
-}
-.recom-card-body .recom-list li {
-    padding-left: 24px;
-    font-size: 0.9rem;
-    color: #444;
-}
-.recom-card-body .recom-list li::before { color: var(--qberries-green); }
-.recom-contacto {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: #444;
-}
-@media (max-width: 640px) {
-    .recomendaciones-grid { grid-template-columns: 1fr; }
-    .recomendaciones-page { padding: 20px 16px; }
-}
-
-/* ========== HISTORIAL ========== */
-.historial-header-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 4px;
-}
-.historial-header-row h2 {
-    margin-right: auto;
-}
-.btn-historial-refresh {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    font-size: 0.875rem;
-    color: #2f7cc0;
-    background: #fff;
-    border: 1px solid #2f7cc0;
-    border-radius: 6px;
-    cursor: pointer;
-}
-.btn-historial-refresh:hover {
-    background: #e8f0fe;
-}
-.btn-eliminar-envio {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    color: #c62828;
-    background: #fff;
-    border: 1px solid #ef5350;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.btn-eliminar-envio:hover {
-    background: #ffebee;
-}
-.historial-cell-accion {
-    white-space: nowrap;
-}
-.historial-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 10px;
-    padding: 8px 0;
-}
-.historial-pagination button {
-    padding: 6px 14px;
-    font-size: 0.85rem;
-    color: #2f7cc0;
-    background: #fff;
-    border: 1px solid #2f7cc0;
-    border-radius: 6px;
-    cursor: pointer;
-}
-.historial-pagination button:hover:not(:disabled) {
-    background: #e8f0fe;
-}
-.historial-pagination button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.historial-pag-info {
-    font-size: 0.9rem;
-    color: #555;
-}
-.historial-servidor-wrap {
-    margin-bottom: 1rem;
-}
-.historial-cache-msg {
-    margin: 6px 0 0 0;
-    font-size: 0.8rem;
-    color: #666;
-}
-.historial-table-servidor {
-    font-size: 0.85rem;
-}
-.historial-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 10px;
-}
-
-.hist-date-group {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #fafafa;
-}
-
-.hist-date-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    background: #f0f4fb;
-    border-bottom: 1px solid #e0e0e0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #1a3d6e;
-}
-
-.hist-date-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.hist-ensayos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px 12px 12px;
-}
-
-.hist-ensayo-card {
-    flex: 1 1 180px;
-    min-width: 0;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    padding: 8px 10px;
-    background: #ffffff;
-    font-size: 0.85rem;
-}
-
-.hist-ensayo-title {
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.hist-ensayo-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: wrap;
-    color: #555;
-}
-
-.hist-status-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.hist-status-pendiente {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.hist-status-subido {
-    background: #e6f4ea;
-    color: #1b5e20;
-}
-
-.hist-status-rechazado {
-    background: #ffecb3;
-    color: #7d5a00;
-}
-
-.historial-row-clickable {
-    cursor: pointer;
-}
-
-/* Historial - Tabla ordenada */
-.historial-table-wrapper {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-.historial-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-
-.historial-table th,
-.historial-table td {
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.historial-table thead th {
-    background: var(--qberries-green);
-    color: #fff;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-}
-
-/* Página Historial */
-.historial-page {
-    max-width: 900px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 24px;
-    border-radius: 14px;
-    box-shadow: 0 6px 32px rgba(44, 62, 80, 0.06);
-}
-.historial-title {
-    margin: 0 0 8px 0;
-    font-size: 1.35rem;
-    color: #2c3e50;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.historial-desc {
-    margin: 0 0 20px 0;
-    color: #666;
-    font-size: 0.9rem;
-}
-.historial-sin-datos {
-    text-align: center;
-    color: #888;
-    padding: 24px;
-    font-size: 0.95rem;
-}
-
-.historial-table tbody tr:hover {
-    background: #f8fafc;
-}
-
-.historial-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* ========== UTILIDADES ========== */
-.chevron { 
-    transition: 0.3s ease; 
-}
-
-.rotate { 
-    transform: rotate(180deg); 
-}
-
-@keyframes fadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(10px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
-}
-
-/* ========== RESPONSIVIDAD ========== */
-@media (max-width: 600px) {
-    .col {
-        min-width: 100%;
-    }
-    .main-content {
-        padding: 10px;
-    }
-}
-
-/* Header en 2 filas solo en celular/tablet */
-@media (max-width: 768px) {
-    header {
-        flex-wrap: wrap;
-        gap: 12px 16px;
-        padding-bottom: 14px;
-    }
-    /* Primera fila: menú (izq) + estado (der) */
-    header .menu-btn-with-logo {
-        order: 1;
-        flex-shrink: 0;
-    }
-    header #network-status-container {
-        order: 2;
-        margin-left: auto;
-        flex-shrink: 0;
-    }
-    header h1 {
-        order: 3;
-        width: 100%;
-        flex: none;
-        font-size: 1.2rem;
-        line-height: 1.35;
-        text-align: center;
-        padding-top: 6px;
-        margin-top: 2px;
-    }
-    /* Estado de conexión en una sola fila en móvil: En línea | Pendientes: 0 */
-    .status-card {
-        flex-direction: row;
-        gap: 10px;
-        align-items: center;
-        padding: 8px 12px;
-        min-width: 100px;
-        font-size: 0.8rem;
-    }
-    .status-card .status-info {
-        margin-bottom: 0;
-    }
-    .status-card #pending-count {
-        font-size: 0.72rem;
-        margin-top: 0;
-        width: auto;
-    }
-}
-
-/* Select de tipo mediacion */
-
-.form-inline {
-    display: flex;             /* Activa el modo fila */
-    align-items: center;      /* Alinea verticalmente al centro */
-    gap: 15px;                /* Espacio entre el texto y el select */
-    justify-content: space-between; /* Empuja el select a la derecha */
-}
-
-.form-inline label {
-    margin-bottom: 0;         /* Quita el margen inferior que suelen tener los labels */
-    white-space: nowrap;      /* Evita que el texto se parta en dos líneas */
-    flex-shrink: 0;           /* Evita que el label se encoja */
-}
-
-.form-inline .select-modern {
-    flex-grow: 1;             /* Hace que el select ocupe el espacio restante */
-    max-width: 300px;         /* Limita el ancho para que no se vea gigante */
-}
-
-/* Ajuste para celulares */
-@media (max-width: 480px) {
-    .form-inline {
-        flex-direction: column; /* En pantallas muy pequeñas vuelve a ser uno arriba del otro */
-        align-items: flex-start;
-    }
-    .form-inline .select-modern {
-        max-width: 100%;
-        width: 100%;
-    }
-}
-
-.btn-edit-row {
-    background: none;
-    border: none;
-    color: #1429c4;
-    cursor: pointer;
-    padding: 5px;
-    transition: transform 0.2s;
-}
-
-
-/* estilos de tabla para los card */
-.table-field-style {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    margin-top: 10px;
-    /* Borde exterior fino */
-    border: 1px solid #ccc; 
-}
-
-.table-field-style td {
-    border: 1px solid #19191a;
-    border-bottom: 1px solid #19191a;
-    padding: 4px 4px;
-    text-align: center;
-    font-size: 0.85rem;
-}
-.table-field-style th {
-    border: 1px solid #19191a;
-    border-bottom: 1px solid #19191a;
-    padding: 4px 6px;
-    text-align: center;
-    font-size: 0.85rem;
-}
-
-/* Permitir seleccionar hora: mantener control nativo del input time y área clicable */
-input[type="time"] {
-    cursor: pointer;
-    min-height: 28px;
-}
-input[type="time"]::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: 1;
-}
-
-/* Filas ya ingresadas en packing: solo texto, sin inputs, para minimizar ancho */
-.packing-row-text td {
-    min-width: 0;
-    font-size: 0.9rem;
-}
-
-/* Encabezados más profesionales: más padding para que no se compriman */
-.table-field-style thead th {
-    background-color: #f8f9fa;
-    color: #333;
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    padding: 8px 6px;
-    line-height: 1.2;
-    white-space: normal;
-}
-
-/* Estilo para los inputs de temperatura */
-.input-table-row input {
-    width: 100%;
-    border: none;
-    background: #fdfdfd;
-    text-align: center;
-    padding: 4px 0;
-    outline: none;
-    font-weight: 500;
-    color: #2b78c5;
-}
-
-.input-table-row input:focus {
-    background: #eef6ff;
-}
-
-/* Botón "+" minimalista */
-.btn-mini-add {
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    width: 28px;
-    height: 28px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
-
-.btn-mini-add:hover {
-    background: #218838;
-}
-
-/* Modales de edición Packing: como "Editar Jarra" — label arriba, campo abajo, bien identificados */
-.packing-edit-modal.swal2-popup {
-    padding: 1rem 1.5rem 1.25rem;
-    border-radius: 10px;
-    max-width: 340px;
-}
-.packing-edit-modal .swal2-title {
-    margin-bottom: 0.75rem;
-    font-size: 1.1rem;
-    color: var(--text, #333);
-}
-.packing-edit-modal .swal2-html-container {
-    margin: 0;
-    padding: 0;
-    text-align: left;
-}
-.packing-edit-modal .packing-modal-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 0;
-}
-.packing-edit-modal .packing-modal-field {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.packing-edit-modal .packing-modal-field label {
-    display: block;
-    text-align: left;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text, #333);
-    margin: 0;
-}
-.packing-edit-modal .packing-modal-field input.swal2-input,
-.packing-edit-modal .packing-modal-field select.swal2-input {
-    width: 100%;
-    min-height: 40px;
-    margin: 0;
-    padding: 0.5rem 0.6rem;
-    font-size: 0.95rem;
-    box-sizing: border-box;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-.packing-edit-modal .swal2-actions {
-    margin-top: 0.75rem;
-    gap: 0.5rem;
-}
-.packing-edit-modal .swal2-actions .swal2-styled {
-    margin: 0;
-    padding: 0.5rem 1.25rem;
-    font-size: 0.9rem;
-}
-/* Modal Observación (input único) */
-.packing-edit-modal .swal2-input {
-    margin: 0.25rem 0 0;
-    padding: 0.5rem 0.6rem;
-    min-height: 40px;
-    font-size: 0.95rem;
-}
-
-/* ========== QBERRIES - REPORTE ACTOS Y/O CONDICIONES INSEGURAS ========== */
-/* Colores del logo: rojo, naranja, verde claro, verde estándar */
-
+/* ========== JARDINES DE LA PAZ - PROFORMA ========== */
 :root {
-    --qberries-red: #c0392b;
-    --qberries-red-light: #e74c3c;
-    --qberries-orange: #e67e22;
-    --qberries-green-light: #7dce82;
-    --qberries-green: #27ae60;
-    --qberries-grey-bar: #6c7a89;
-    --qberries-text: #2c3e50;
-    --qberries-border: #bdc3c7;
-    --qberries-foto-blue: #3498db;
+    --jdp-verde: #1a4731;
+    --jdp-dorado: #a6894a;
+    --jdp-fondo: #fcfaf5;
+    --jdp-texto: #333333;
 }
 
-/* Inputs con borde normal (no separados) */
-.reporte-qberries input[type="text"],
-.reporte-qberries input[type="date"],
-.reporte-qberries input[type="number"],
-.reporte-qberries select,
-.reporte-qberries textarea {
-    border: 1px solid var(--qberries-border);
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    border-radius: 4px;
-    transition: border-color 0.2s;
+#main-container.main-container-jdp,
+.main-container-jdp {
+    border-top: 8px solid var(--jdp-verde);
+    background-color: var(--jdp-fondo);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 0;
+    margin: 0;
     width: 100%;
-    background: #fff;
+    max-width: 100vw;
+    overflow-x: hidden;
     box-sizing: border-box;
 }
-
-.reporte-qberries input:focus,
-.reporte-qberries select:focus,
-.reporte-qberries textarea:focus {
-    outline: none;
-    border-color: var(--qberries-green);
+/* Value centrado en input type="number" y value-display (solo CSS) */
+#main-container input[type="number"],
+#main-container .value-display {
+    text-align: center !important;
+    direction: ltr !important;
+    font-weight: 400;
+    color: var(--jdp-texto);
 }
 
-.reporte-qberries textarea {
-    min-height: 100px;
-    resize: vertical;
+/* Quitar flechas (spinners) de TODOS los inputs numéricos */
+#main-container input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
-
-/* Checkboxes: estilo referencia = borde verde + check verde, fondo blanco (no cuadrado verde sólido) */
-.reporte-qberries input[type="checkbox"] {
-    appearance: none;
+#main-container input[type="number"]::-webkit-outer-spin-button,
+#main-container input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
-    width: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-    height: 18px;
-    min-height: 18px;
-    margin: 0 8px 0 0;
-    cursor: pointer;
-    vertical-align: middle;
-    flex-shrink: 0;
-    box-sizing: border-box;
-    border: 2px solid var(--qberries-border);
-    border-radius: 4px;
+    appearance: none;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+}
+
+html {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    color: var(--jdp-texto);
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+.main-container-jdp body { background-color: var(--jdp-fondo); }
+
+.header-jdp {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px max(20px, env(safe-area-inset-left)) 16px max(20px, env(safe-area-inset-right));
     background: #fff;
-    transition: border-color 0.2s, background 0.2s;
-}
-.reporte-qberries input[type="checkbox"]:checked {
-    border-color: var(--qberries-green);
-    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2327ae60' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E") center / 12px 12px no-repeat;
-}
-/* Sin marcar: borde gris siempre (arregla bug de que quedaba verde al quitar el check por focus/hover) */
-.reporte-qberries input[type="checkbox"]:not(:checked):hover,
-.reporte-qberries input[type="checkbox"]:not(:checked):focus {
-    border-color: var(--qberries-border);
+    border-bottom: 2px solid var(--jdp-dorado);
+    box-shadow: 0 2px 8px rgba(26, 71, 49, 0.08);
 }
 
-/* Encabezado: 1 fila con 3 columnas (Código | Versión | Aprobación) - logo ya está en el header de página */
-.reporte-qberries .form-header-qb {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr;
-    align-items: center;
-    gap: 0 20px;
-    margin-bottom: 18px;
-    padding-bottom: 14px;
-    border-bottom: 2px solid #27ae60;
+.header-jdp-inner h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    color: var(--jdp-verde);
+    font-weight: 700;
 }
 
-.reporte-qberries .form-header-col {
-    display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.reporte-qberries .form-header-col label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--qberries-text);
-    white-space: nowrap;
-    flex-shrink: 0;
-    min-width: 0;
-}
-
-.reporte-qberries .form-header-col input {
-    flex: 1;
-    min-width: 60px;
-    max-width: 100%;
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    text-align: left;
-}
-
-/* Logo en primera columna */
-.reporte-qberries .form-header-col.logo-qberries {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-}
-
-.reporte-qberries .logo-qberries .logo-q { color: var(--qberries-red); font-weight: 800; font-size: 1.5rem; }
-.reporte-qberries .logo-qberries .logo-berries { color: var(--qberries-green); font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
-
-.reporte-qberries .logo-qberries .logo-icon {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.reporte-qberries .logo-qberries .logo-icon span {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--qberries-red) 0%, var(--qberries-orange) 50%, var(--qberries-green-light) 100%);
+.tagline-jdp {
+    margin: 2px 0 0 0;
+    font-size: 0.78rem;
+    color: var(--jdp-texto);
     opacity: 0.9;
 }
 
-/* En celular: label arriba, input abajo en Código / Versión / Aprobación */
-@media (max-width: 480px) {
-    .reporte-qberries .form-header-qb {
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 12px 8px;
-        margin-bottom: 14px;
-        padding-bottom: 10px;
-    }
-    .reporte-qberries .form-header-col {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
-    }
-    .reporte-qberries .form-header-col label {
-        font-size: 0.72rem;
-        margin-bottom: 0;
-    }
-    .reporte-qberries .form-header-col input {
-        padding: 6px 8px;
-        font-size: 0.8rem;
-        min-width: 0;
-        width: 100%;
-    }
-    .reporte-qberries .field-row label {
-        font-size: 0.78rem;
-        line-height: 1.3;
-    }
-    .reporte-qberries .section-bar {
-        font-size: 0.85rem;
-        padding: 10px 12px;
-    }
-    .reporte-qberries input[type="text"],
-    .reporte-qberries textarea {
-        font-size: 0.82rem;
-        padding: 6px 10px;
-    }
-    /* Fecha en celular: 16px para que no haga zoom iOS y se abra el selector nativo bien */
-    .reporte-qberries input[type="date"] {
-        font-size: 16px !important;
-        padding: 10px 12px;
-        min-height: 44px;
-    }
-}
-
-/* Barras de sección (gris con texto blanco) */
-.reporte-qberries .section-bar {
-    background: var(--qberries-grey-bar);
-    color: white;
-    padding: 10px 14px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    margin: 20px 0 12px 0;
-    border-radius: 0 8px 8px 0;
-    border-left: 4px solid var(--qberries-red);
-}
-
-.reporte-qberries .section-bar:first-of-type { margin-top: 0; }
-
-/* Bloques de checkboxes: cuadro a la IZQUIERDA, texto a la DERECHA en una sola fila (nunca uno debajo del otro) */
-.reporte-qberries .checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px 32px;
+/* Indicador En línea / Sin línea — estilo empresarial */
+.status-card-jdp {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 16px;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-.reporte-qberries .checkbox-group label {
-    display: inline-flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
+.status-card-jdp.online {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #1b5e20;
+    border-color: #81c784;
+}
+
+.status-card-jdp.offline {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    color: #b71c1c;
+    border-color: #e57373;
+}
+
+.status-card-jdp #status-dot {
+    font-size: 0.6rem;
+    line-height: 1;
+    display: inline-block;
+}
+
+.status-card-jdp.online #status-dot { color: #2e7d32; }
+.status-card-jdp.offline #status-dot { color: #c62828; }
+
+/* Ancho tipo móvil: mismo aspecto en pantalla completa que en pantalla pequeña */
+.proforma-wrap {
+    width: 100%;
+    max-width: min(520px, 100%);
+    margin: 0 auto;
+    padding: 16px max(12px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right));
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.proforma-content {
+    background: #fff;
+    padding: 18px 14px;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(26, 71, 49, 0.12);
+    width: 100%;
+    max-width: min(480px, 100%);
+    margin: 0 auto;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+}
+
+/* Marco verde tipo documento (referencia imagen) */
+.proforma-document {
+    border: 2px solid var(--jdp-verde);
+    border-radius: 10px;
+    padding: 20px 16px 18px;
+    background: #fff;
+    text-align: center;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.main-container-jdp h2,
+.proforma-title {
+    color: var(--jdp-verde);
+    border-bottom: 2px solid var(--jdp-dorado);
+    padding-bottom: 10px;
+    margin: 0 0 20px 0;
+    font-size: 1.2rem;
+    letter-spacing: 0.02em;
+    text-align: center;
+    font-weight: 700;
+}
+
+/* Fila: Label -----> valor (en una lÃ­nea) */
+.proforma-grid {
+    display: flex; 
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 6px;
+    text-align: left;
+}
+
+.proforma-grid-row {
+    margin-bottom: 12px;
+}
+
+.proforma-grid-row:last-child { margin-bottom: 0; }
+
+/* Fila: label y flecha a la izquierda, valor siempre a la derecha (como en pantalla pequeña) */
+.proforma-row-inline {
+    display: grid;
+    grid-template-columns: 1fr auto 64px;
     align-items: center;
     gap: 0 8px;
-    cursor: pointer;
+}
+
+.proforma-row-inline .proforma-label { grid-column: 1; min-width: 0; }
+.proforma-row-inline .proforma-arrow { grid-column: 2; }
+.proforma-row-inline .proforma-value-box { grid-column: 3; justify-self: end; }
+
+.proforma-label {
+    margin: 0;
     font-size: 0.85rem;
-    color: var(--qberries-text);
-    line-height: 1.35;
-    margin-bottom: 0;
-    font-weight: 600;
-    white-space: nowrap;
+    color: var(--jdp-texto);
+    font-weight: 700;
+    text-transform: none;
 }
 
-.reporte-qberries .checkbox-group label input[type="checkbox"] {
-    flex-shrink: 0 !important;
-    margin: 0 8px 0 0;
+.proforma-label-bold { font-weight: 700; }
+
+/* Flecha -----> estilo empresarial */
+.proforma-arrow {
+    color: var(--jdp-dorado);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    flex-shrink: 0;
+    opacity: 0.9;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* CAUSA: una columna, el segundo bloque va al final (fila a fila), sin espacio entre bloques */
-.reporte-qberries .causa-columns {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
-}
-
-@media (max-width: 700px) {
-    .reporte-qberries .causa-columns { grid-template-columns: 1fr; }
-}
-
-/* Fila de campos */
-.reporte-qberries .field-row {
-    margin-bottom: 16px;
-}
-
-.reporte-qberries .field-row label {
-    display: block;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--qberries-text);
-    margin-bottom: 6px;
-    line-height: 1.35;
-}
-
-/* Inputs alineados al ancho del texto/label */
-.reporte-qberries .field-row input,
-.reporte-qberries .field-row select,
-.reporte-qberries .field-row textarea {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-}
-
-/* Fecha: formato visible "27 feb. 2026" en azul + icono calendario (celular y computadora) */
-.reporte-qberries .rep-fecha-wrap {
-    position: relative;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid var(--qberries-border);
-    border-radius: 4px;
-    background: #fff;
-    min-height: 38px;
-}
-.reporte-qberries .rep-fecha-input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-    z-index: 2;
-    margin: 0;
+/* Caja del número: aspecto empresarial, bordes redondeados */
+.proforma-value-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     padding: 0;
-}
-.reporte-qberries .rep-fecha-display {
-    display: block;
-    padding: 8px 40px 8px 10px;
-    font-size: 0.95rem;
-    color: #999;
-    pointer-events: none;
-    position: relative;
-    z-index: 1;
+    min-height: 40px;
+    height: 40px;
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+    flex-shrink: 0;
     box-sizing: border-box;
 }
-.reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-display {
-    color: #2c3e50;
-}
-.reporte-qberries .rep-fecha-icon-wrap {
-    position: absolute;
-    right: 0;
-    top: 75%;
-    transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 3;
-}
-.reporte-qberries .rep-fecha-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-    margin: 0;
-    color: #999;
-    pointer-events: none;
-}
-.reporte-qberries .rep-fecha-icon svg {
-    display: block;
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px;
-    min-height: 24px;
-    flex-shrink: 0;
-    margin: auto;
-}
-/* iPhone / Safari: icono de fecha estable y centrado */
-@supports (-webkit-touch-callout: none) {
-    .reporte-qberries .rep-fecha-icon-wrap {
-        -webkit-transform: translateY(-50%);
-    }
-    .reporte-qberries .rep-fecha-icon svg {
-        position: relative;
-        top: 0;
-        left: 0;
-    }
-}
-.reporte-qberries .rep-fecha-wrap.has-value .rep-fecha-icon {
-    color: #2c3e50;
-}
 
-/* Áreas de texto con etiqueta FOTO */
-.reporte-qberries .textarea-wrap {
-    position: relative;
-}
-
-.reporte-qberries .textarea-wrap .foto-label {
-    position: absolute;
-    bottom: 10px;
-    right: 12px;
-    font-size: 0.85rem;
-    color: #27ae60;
-    font-weight: 600;
-    cursor: pointer;
-    z-index: 2;
-    user-select: none;
-}
-.reporte-qberries .textarea-wrap .foto-label:hover {
-    color: #1e8449;
-    text-decoration: underline;
-}
-.reporte-qberries .textarea-wrap .hidden-file-input {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
-}
-
-/* Fila: nombre de la foto (clic para ver) + botón FOTO */
-.reporte-qberries .foto-nombre-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-}
-.reporte-qberries .foto-nombre-input {
-    flex: 1;
-    padding: 8px 10px;
-    font-size: 0.85rem;
-    border: 1px solid var(--qberries-border);
-    border-radius: 4px;
-    background: #fff;
-    cursor: pointer;
-    color: var(--qberries-text);
-}
-.reporte-qberries .foto-nombre-input:placeholder-shown {
-    color: #999;
-}
-.reporte-qberries .foto-nombre-input:disabled {
-    background: #f5f5f5;
-    cursor: default;
-    color: #666;
-}
-.reporte-qberries .foto-nombre-row .foto-label {
-    position: static;
-    flex-shrink: 0;
-}
-
-/* Modal ver foto */
-.modal-foto-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
-}
-.modal-foto-overlay.modal-foto-abierto {
-    display: flex;
-}
-.modal-foto-content {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px;
-    max-width: 95vw;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-}
-.modal-foto-content img {
-    max-width: 100%;
-    max-height: 75vh;
-    object-fit: contain;
-    display: block;
-}
-.modal-foto-cerrar {
-    padding: 10px 24px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #fff;
-    background: var(--qberries-green);
+/* Input: misma media izquierda y derecha (padding simétrico), centrado */
+.proforma-value-box input[type="number"],
+.proforma-document .proforma-value-box input[type="number"] {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding-left: 8px;
+    padding-right: 8px;
     border: none;
     border-radius: 8px;
-    cursor: pointer;
-}
-.modal-foto-cerrar:hover {
-    background: #1e8449;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 400;
+    font-family: inherit;
+    text-align: center !important;
+    line-height: 40px;
+    direction: ltr !important;
+    color: var(--jdp-texto);
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
-/* Modal PDF: misma página, ver y descargar */
-.modal-pdf-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 10000;
+.proforma-value-box input:focus {
+    outline: none;
+    background: #fafafa;
+}
+
+.proforma-value-box input::-webkit-outer-spin-button,
+.proforma-value-box input::-webkit-inner-spin-button {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+}
+
+/* value-display (Total): misma media izquierda y derecha */
+.proforma-value-box .value-display {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-weight: 400;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--jdp-texto);
+    text-align: center !important;
+    line-height: 40px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
 }
-.modal-pdf-overlay.modal-pdf-abierto {
-    display: flex;
+
+.proforma-total-row .value-display { font-size: 13px; font-weight: 700; }
+#pro_total_display.value-display { font-weight: 700 !important; }
+
+/* Cajas destacadas (verde) - mismo aspecto que en pantalla pequeña */
+.proforma-box {
+    border: 2px solid var(--jdp-verde);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    background: rgba(26, 71, 49, 0.06);
+    text-align: left;
 }
-.modal-pdf-content {
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    width: 100%;
-    max-width: 900px;
-    max-height: 95vh;
+
+.proforma-box-total,
+.proforma-box-inicial,
+.proforma-box-total-cuotas {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 6px 12px;
+    margin: 14px 0;
+}
+
+/* Total con descuento, Inicial y Total (cuotas): label a la izquierda, valor a la derecha */
+.proforma-box-total .box-label,
+.proforma-box-inicial .box-label { grid-column: 1; }
+.proforma-box-total-cuotas .box-value-input { grid-column: 1; justify-self: start; }
+.proforma-box-total-cuotas .box-label { grid-column: 2; justify-self: end; text-align: right; }
+.proforma-box-total .box-value-input,
+.proforma-box-inicial input {
+    grid-column: 2;
+    justify-self: end;
+}
+
+/* Términos: mismo estilo que Total con descuento */
+.proforma-box-terms {
+    margin-top: 14px;
+    padding-left: 4px;
+    padding-right: 12px;
+    margin-left: 0;
+    margin-right: 0;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+    gap: 0;
 }
-.modal-pdf-header {
+/* Columna de etiqueta fija para que 30, 1400 y 600 queden exactamente en la misma posición */
+.proforma-box-terms .term-row-box {
+    display: grid;
+    grid-template-columns: 200px 64px auto;
+    align-items: center;
+    gap: 10px 7px;
+    padding: 4px 16px 10px 6px;
+    border-bottom: 1px solid var(--jdp-verde);
+}
+.proforma-box-terms .term-row-box:last-of-type {
+    border-bottom: none;
+}
+.proforma-box-terms .term-row-box .box-label {
+    grid-column: 1;
+    font-weight: 700;
+    color: var(--jdp-verde);
+    font-size: 0.9rem;
+    text-align: left;
+    padding: 0 8px 0 0;
+}
+.proforma-box-terms .term-input-col {
+    grid-column: 2;
+    justify-self: center;
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+    text-align: center !important;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 8px;
+    font-weight: 700 !important;
+}
+.proforma-box-terms .term-row-box .term-unit {
+    grid-column: 3;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--jdp-verde);
+    line-height: 1;
+    align-self: center;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+.proforma-box-terms .term-note {
+    margin: 8px 0 0 0;
+    font-size: 0.78rem;
+    color: var(--jdp-texto);
+    opacity: 0.9;
+    text-align: center;
+}
+
+.proforma-box .box-label,
+.proforma-box .box-value {
+    font-weight: 700;
+    color: var(--jdp-verde);
+    font-size: 0.9rem;
+    text-transform: none;
+}
+
+/* Total con descuento / Inicial: misma media izquierda y derecha, aspecto empresarial */
+.proforma-box .box-value-input,
+.proforma-box-inicial input,
+.proforma-box-total-cuotas .box-value-input {
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+    min-height: 28px;
+    height: 28px;
+    text-align: center !important;
+    line-height: 28px;
+    border: 1px solid var(--jdp-dorado);
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    font-family: inherit;
+    color: var(--jdp-texto);
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.proforma-box .box-value-input:focus {
+    outline: none;
+    border-color: var(--jdp-verde);
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.2);
+}
+
+.proforma-box-inicial input:focus,
+.proforma-box-total-cuotas .box-value-input:focus {
+    outline: none;
+    border-color: var(--jdp-verde);
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.2);
+}
+
+/* Total con descuento e Inicial: números en negrita */
+.proforma-box-total .box-value-input,
+.proforma-box-inicial input {
+    font-weight: 700 !important;
+}
+
+/* Total con descuento: solo lectura, no se puede editar */
+.proforma-box-total .box-value-input[readonly] {
+    background: #f0f0f0;
+    cursor: default;
+    color: var(--jdp-texto);
+}
+.proforma-box-total .box-value-input[readonly]:focus {
+    outline: none;
+    border-color: var(--jdp-dorado);
+}
+
+/* Saldo: centrado y ocupa todo el ancho, sin espacio vacío a la derecha */
+.saldo-section-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 2px;
+}
+
+.saldo-section {
+    margin-top: 0;
+    text-align: center;
+}
+
+.saldo-section-box {
+    border: 2px solid var(--jdp-verde);
+    border-radius: 8px;
+    padding: 12px 14px 14px;
+    margin: 0;
+    background: rgba(26, 71, 49, 0.04);
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+.saldo-section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px 18px;
-    background: #2c3e50;
-    color: #fff;
+    margin-bottom: 10px;
+    text-align: left;
 }
-.modal-pdf-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-}
-.modal-pdf-actions {
-    display: flex;
+.saldo-header-actions {
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
-.btn-descargar-pdf {
-    padding: 8px 18px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #fff;
-    background: var(--qberries-green);
-    border-radius: 8px;
-    text-decoration: none;
-    transition: background 0.2s;
-}
-.btn-descargar-pdf:hover {
-    background: #1e8449;
-    color: #fff;
-}
-.modal-pdf-cerrar {
-    padding: 8px 16px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #2c3e50;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    cursor: pointer;
-}
-.modal-pdf-cerrar:hover {
-    background: #f0f0f0;
-}
-.modal-pdf-iframe {
-    width: 100%;
-    height: 75vh;
-    min-height: 400px;
-    border: none;
-    display: block;
-}
-
-@media (max-width: 768px) {
-    .modal-pdf-overlay {
-        padding: 10px;
-    }
-    .modal-pdf-content {
-        max-height: 97vh;
-        border-radius: 10px;
-    }
-    .modal-pdf-header {
-        padding: 10px 12px;
-    }
-    .modal-pdf-header h3 {
-        font-size: 1rem;
-    }
-    .modal-pdf-iframe {
-        height: 82vh;
-        min-height: 0;
-    }
-}
-
-/* Footer: Reportante y Firma, fila a fila (uno debajo del otro) */
-.reporte-qberries .form-footer-qb {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-    margin-top: 28px;
-    padding-top: 20px;
-    border-top: 2px solid var(--qberries-border);
-}
-
-.reporte-qberries .form-footer-qb .field-row { margin-bottom: 0; }
-
-/* Botón guardar con colores QBerries: centrado y con spinner */
-.reporte-qberries .btn-guardar-qb {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 24px;
-    margin-left: auto;
-    margin-right: auto;
-    background: linear-gradient(135deg, var(--qberries-green) 0%, #1e8449 100%);
-    color: white;
-    border: none;
-    padding: 14px 28px;
-    font-size: 1rem;
-    font-weight: 700;
-    border-radius: 8px;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(39, 174, 96, 0.35);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.reporte-qberries .btn-guardar-qb .btn-spinner {
-    border-color: rgba(255,255,255,0.35);
-    border-top-color: #fff;
-    flex-shrink: 0;
-}
-
-.reporte-qberries .btn-guardar-qb:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
-}
-
-.reporte-qberries .btn-guardar-qb:active { transform: translateY(0); }
-
-.reporte-qberries .btn-ver-pdf-qb {
-    display: block;
-    margin: 16px auto 0;
-    padding: 12px 24px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #2c3e50;
-    background: #fff;
-    border: 1px solid var(--qberries-green);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-.reporte-qberries .btn-ver-pdf-qb:hover {
-    background: #e8f5e9;
-    color: #1e8449;
-}
-
-.reporte-qberries .form-actions-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 24px;
-}
-
-.reporte-qberries .form-actions-row .btn-guardar-qb {
-    margin-top: 0;
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.reporte-qberries .form-actions-row .btn-ver-pdf-qb {
-    margin: 0;
-}
-
-.reporte-qberries .btn-pdf-icon-only {
-    width: 46px;
-    height: 46px;
-    min-width: 46px;
-    padding: 0;
+.btn-add-cuota-row {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 50%;
+    background: rgba(166, 137, 74, 0.1);
+    color: var(--jdp-dorado);
+    cursor: pointer;
+}
+.btn-add-cuota-row:hover {
+    background: rgba(166, 137, 74, 0.2);
+    color: var(--jdp-verde);
+}
+.btn-add-cuota-row .lucide,
+.btn-add-cuota-row svg {
+    width: 14px;
+    height: 14px;
+}
+.cuotas-extra-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px 0;
+}
+.cuota-item-extra {
+    grid-template-columns: 32px 72px 48px 24px minmax(0, 1fr);
+}
+.cuota-item-extra .btn-delete-extra-row {
+    grid-column: 4;
+    justify-self: start;
+    margin-left: 0;
+}
+.cuota-item-deletable {
+    grid-template-columns: 32px 72px 48px 24px minmax(0, 1fr);
+}
+.cuota-item-deletable .btn-delete-cuota-row {
+    grid-column: 4;
+    justify-self: start;
+    margin-left: 0;
+}
+.saldo-section-box .section-label {
+    text-align: left;
+    margin-bottom: 0;
+}
+.saldo-section-box .cuotas-row-stack {
+    align-items: stretch;
+    width: 100%;
+}
+.saldo-section-box .cuotas-row-stack .cuota-item,
+.saldo-section-box .cuotas-row-stack .cuota-separator,
+.saldo-section-box .cuotas-row-stack .cuotas-extra-container {
+    width: 100%;
+    min-width: 0;
+}
+.btn-saldo-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 50%;
+    background: rgba(166, 137, 74, 0.1);
+    color: var(--jdp-dorado);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.btn-saldo-info:hover {
+    background: rgba(166, 137, 74, 0.2);
+    color: var(--jdp-verde);
+}
+.btn-saldo-info .lucide,
+.btn-saldo-info svg {
+    width: 14px;
+    height: 14px;
 }
 
-.reporte-qberries .btn-pdf-icon-only svg,
-.reporte-qberries .btn-pdf-icon-only i {
+.cuotas-row-stack {
+    flex-direction: column;
+    align-items: center;
+    gap: 7px 0;
+}
+
+.saldo-section .section-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--jdp-texto);
+    text-transform: none;
+}
+
+.cuotas-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    align-items: center;
+}
+
+/* Grid: nÃºmero | etiqueta (ancho fijo) | monto â†’ 209, 158, 480 en la misma posiciÃ³n */
+.cuota-item {
+    font-size: 0.82rem;
+    color: var(--jdp-texto);
+    display: grid;
+    grid-template-columns: 32px 72px 48px minmax(0, 1fr);
+    align-items: center;
+    gap: 0 8px;
+}
+.cuota-item-con-celdas {
+    grid-template-columns: 32px 72px 48px minmax(120px, 1fr);
+}
+
+.cuota-item .cuota-label {
+    width: 72px;
+    min-width: 72px;
+    display: inline-block;
+}
+.cuota-arrow {
+    color: #a6894a;
+}
+
+.cuota-separator {
+    width: 100%;
+    height: 0;
+    border: none;
+    border-top: 2px solid var(--jdp-dorado);
+    margin: 8px 0 6px 0;
+}
+
+.cuota-item.cuota-extra {
+    grid-template-columns: 32px 72px;
+}
+.cuota-item-total {
+    grid-template-columns: 32px 72px minmax(0, 1fr);
+}
+.cuota-item-total .cuota-num { grid-column: 1; }
+.cuota-item-total .cuota-label { grid-column: 2; }
+
+.cuota-item-destacado { font-weight: 400; }
+
+/* Inputs cuota: line-height = height para centrado vertical del número */
+.cuotas-row .cuota-num {
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    text-align: center !important;
+    padding-left: 4px;
+    padding-right: 4px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+    line-height: 32px;
+}
+
+.cuotas-row .cuota-monto {
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    height: 32px;
+    min-height: 32px;
+    text-align: center !important;
+    padding-left: 6px;
+    padding-right: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+    line-height: 32px;
+}
+
+.cuotas-row .cuota-monto:focus,
+.cuotas-row .cuota-num:focus {
+    outline: none;
+    border-color: var(--jdp-dorado);
+}
+
+.pro-monto-destacado { font-weight: 400; border-color: var(--jdp-dorado) !important; }
+.cuota-extra .cuota-num { width: 32px; min-width: 32px; max-width: 32px; }
+
+/* 01 cuota 480: usa la misma grid que las demÃ¡s â†’ 480 alineado con 209 y 158 */
+
+/* Icono + y celdas juntos: celdas siempre a la derecha del icono */
+.cuota-icon-y-celdas {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+        flex-shrink: 0;
+    min-width: min-content;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.cuota-celdas-container {
+    display: inline-flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+        align-items: flex-start;
+    gap: 4px 0;
+    margin-left: 4px;
+    min-height: 28px;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.cuota-celda-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cuota-celda-row .cuota-celda {
+    flex: 0 0 auto;
+}
+
+.btn-delete-celda {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    padding: 0;
+    border: 1px solid #c9a962;
+    border-radius: 4px;
+    background: #fff;
+    color: #8b6914;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn-delete-celda:hover {
+    background: var(--jdp-verde);
+    color: #fff;
+    border-color: var(--jdp-verde);
+}
+
+.btn-delete-celda .lucide,
+.btn-delete-celda svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2;
+}
+
+.btn-add-celda {
     width: 20px;
     height: 20px;
-}
-
-.reporte-qberries .firma-upload-row {
-    display: flex;
+    min-width: 20px;
+    min-height: 20px;
+    padding: 0;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 6px;
+    background: linear-gradient(180deg, #fff 0%, #f8f6f0 100%);
+    color: var(--jdp-verde);
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
-    margin-top: 8px;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 2px rgba(26, 71, 49, 0.1);
 }
 
-.reporte-qberries .firma-file-input {
-    width: 100%;
-    max-width: 340px;
-    font-size: 0.82rem;
+.btn-add-celda:hover {
+    background: var(--jdp-verde);
+    color: #fff;
+    border-color: var(--jdp-verde);
+    box-shadow: 0 2px 6px rgba(26, 71, 49, 0.25);
 }
 
-/* Título/subtítulo ya no se usan (evitar duplicado con el header de página) */
+.btn-add-celda .lucide,
+.btn-add-celda svg {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.5;
+}
 
-/* Contenedor del reporte */
-.reporte-qberries {
+.btn-add-celda:hover .lucide,
+.btn-add-celda:hover svg {
+    color: #fff;
+    stroke: #fff;
+}
+
+.btn-add-celda:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Input dinámico (celdas 211, 269…): line-height = height para centrado vertical */
+.cuota-celda {
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 24px;
+    min-height: 24px;
+    text-align: center !important;
+    padding-left: 4px;
+    padding-right: 4px;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
     background: #fff;
-    padding: 24px 24px;
-    border-radius: 14px;
-    box-shadow: 0 6px 32px rgba(44, 62, 80, 0.06);
-    max-width: 900px;
-    margin: 0 auto;
+    color: var(--jdp-texto);
+    line-height: 32px;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.cuota-celda::-webkit-outer-spin-button,
+.cuota-celda::-webkit-inner-spin-button {
+    opacity: 0;
+    width: 0;
+    pointer-events: none;
+}
+
+.cuota-celda:focus {
+    outline: none;
+    border-color: var(--jdp-dorado);
+    box-shadow: 0 0 0 2px rgba(166, 137, 74, 0.25);
+}
+
+
+.asesora-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 12px 16px;
+    margin-bottom: 10px;
+}
+
+.asesora-row:last-child { margin-bottom: 0; }
+
+.asesora-label {
+    margin: 0;
+    font-weight: 700;
+    color: var(--jdp-verde);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    text-transform: none;
+}
+
+.asesora-row input {
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--jdp-texto);
+    box-sizing: border-box;
+}
+
+.asesora-row input:focus {
+    outline: none;
+    border-color: var(--jdp-verde);
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.15);
+}
+
+/* Asesora y Teléfono: fijos, no editables */
+.proforma-box-asesora .asesora-row input[readonly] {
+    background: #f0f0f0;
+    cursor: default;
+    color: var(--jdp-texto);
+}
+.proforma-box-asesora .asesora-row input[readonly]:focus {
+    outline: none;
+    border-color: var(--jdp-dorado);
+}
+
+.proforma-actions { margin-top: 24px; text-align: center; }
+
+#btn-generate,
+.btn-generate-jdp {
+    background-color: var(--jdp-verde);
+    border: 1px solid var(--jdp-dorado);
+    color: #fff;
+    padding: 14px 32px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(26, 71, 49, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.btn-generate-jdp:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(26, 71, 49, 0.35);
+}
+
+.btn-generate-jdp:active { transform: translateY(0); }
+
+/* ========== PANTALLA COMPLETA (COMPUTADORA) – inputs más anchos, centrado visible ========== */
+@media (min-width: 769px) {
+    .proforma-wrap {
+        max-width: 580px;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 32px;
+        padding-right: 32px;
+    }
+    .proforma-content {
+        max-width: 540px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 22px 24px;
+    }
+    .proforma-document {
+        margin-left: auto;
+        margin-right: auto;
+        padding: 24px 22px 22px;
+    }
+    /* Grid filas: columna del valor más ancha para que el número se vea en el medio */
+    .proforma-row-inline {
+        grid-template-columns: 1fr auto 96px;
+        gap: 0 12px;
+    }
+    .proforma-value-box {
+        width: 96px;
+        min-width: 96px;
+        max-width: 96px;
+        height: 44px;
+        min-height: 44px;
+        border-radius: 8px;
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+    }
+    .proforma-value-box input[type="number"],
+    .proforma-document .proforma-value-box input[type="number"] {
+        height: 44px;
+        min-height: 44px;
+        line-height: 44px;
+        font-size: 14px;
+        padding-left: 12px;
+        padding-right: 12px;
+        border-radius: 8px;
+    }
+    .proforma-value-box .value-display {
+        height: 44px;
+        min-height: 44px;
+        line-height: 44px;
+        font-size: 14px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    /* Cajas Total con descuento / Inicial: números al medio */
+    .proforma-box .box-value-input,
+    .proforma-box-inicial input,
+    .proforma-box-total-cuotas .box-value-input {
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+        height: 34px;
+        min-height: 34px;
+        line-height: 34px;
+        padding-left: 10px;
+        padding-right: 10px;
+        border-radius: 8px;
+    }
+    /* Saldo: cuota-num y cuota-monto más anchos */
+    .cuota-item {
+        grid-template-columns: 40px 80px 64px minmax(0, 1fr);
+        gap: 0 10px;
+    }
+    .cuota-item-con-celdas {
+        grid-template-columns: 40px 80px 64px minmax(140px, 1fr);
+    }
+    .cuota-item-total {
+        grid-template-columns: 40px 80px minmax(0, 1fr);
+    }
+    .cuota-item-deletable,
+    .cuota-item-extra {
+        grid-template-columns: 40px 80px 64px 24px minmax(0, 1fr);
+    }
+    .cuota-item .cuota-label {
+        width: 80px;
+        min-width: 80px;
+    }
+    .cuotas-row .cuota-num {
+        width: 40px;
+        min-width: 40px;
+        max-width: 40px;
+        height: 36px;
+        min-height: 36px;
+        line-height: 36px;
+        font-size: 14px;
+        padding-left: 6px;
+        padding-right: 6px;
+        border-radius: 6px;
+    }
+    .cuotas-row .cuota-monto {
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
+        height: 36px;
+        min-height: 36px;
+        line-height: 36px;
+        font-size: 14px;
+        padding-left: 8px;
+        padding-right: 8px;
+        border-radius: 6px;
+    }
+    .cuota-celda {
+        width: 48px;
+        min-width: 48px;
+        max-width: 48px;
+        height: 36px;
+        min-height: 36px;
+        line-height: 36px;
+        font-size: 14px;
+        padding-left: 6px;
+        padding-right: 6px;
+        border-radius: 6px;
+    }
+    /* Términos: números al medio */
+    .proforma-box-terms .term-row-box {
+        grid-template-columns: 220px 80px auto;
+        gap: 12px 10px;
+    }
+    .proforma-box-terms .term-input-col {
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
+        height: 34px;
+        line-height: 34px;
+        padding-left: 10px;
+        padding-right: 10px;
+        border-radius: 8px;
+    }
+    #main-container input[type="number"],
+    #main-container .value-display {
+        text-align: center !important;
+        direction: ltr !important;
+    }
+    /* Solo en pantalla grande: contenido de Saldo y Términos más a la derecha */
+    .saldo-section-box {
+        padding-left: 31px;
+        padding-right: 24px;
+    }
+    .proforma-box-terms {
+        padding-left: 36px;
+        padding-right: 24px;
+    }
+    /* Solo input y unidades (Días, Soles) más a la derecha */
+    .proforma-box-terms .term-input-col {
+        margin-left: 22px;
+    }
+    .proforma-box-terms .term-row-box .term-unit {
+        margin-left: 20px;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}
+
+/* ========== PROFORMA RESPONSIVE - TABLET ========== */
+@media (max-width: 768px) {
+    .header-jdp-inner h1 { font-size: 1.2rem; }
+    .tagline-jdp { font-size: 0.8rem; }
+    .proforma-wrap {
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+    .proforma-content { padding: 24px 20px; }
+    .proforma-document { padding: 24px 20px 0px; }
+    .proforma-title { font-size: 1.3rem; margin-bottom: 20px; }
+    .main-container-jdp input[type="number"],
+    .main-container-jdp .value-display { text-align: center !important; }
+}
+
+/* ========== PROFORMA RESPONSIVE - MÃ“VIL ========== */
+/* En celular se ve completo; el tamaÃ±o actual se mantiene. */
+@media (max-width: 520px) {
+    .header-jdp {
+        padding: 12px max(16px, env(safe-area-inset-left)) 12px max(16px, env(safe-area-inset-right));
+    }
+    .header-jdp-inner { flex: 1; min-width: 0; }
+    .header-jdp-inner h1 { font-size: 1.1rem; line-height: 1.3; word-break: break-word; }
+    .tagline-jdp { font-size: 0.75rem; }
+    .status-card-jdp { padding: 8px 10px; font-size: 0.75rem; flex-shrink: 0; }
+
+    .proforma-wrap {
+        padding: 16px max(12px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right));
+    max-width: 100%;
+        box-sizing: border-box;
+    }
+    .proforma-content {
+        padding: 18px 14px;
+        border-radius: 10px;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .proforma-document {
+        padding: 20px 16px 18px;
+        border-width: 1.5px;
+        max-width: 100%;
+    box-sizing: border-box;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .proforma-content {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .proforma-title { font-size: 1.2rem; padding-bottom: 10px; margin-bottom: 20px; }
+
+    .proforma-grid-row { margin-bottom: 12px; }
+    .proforma-row-inline {
+        grid-template-columns: 1fr auto 64px;
+        gap: 0 8px;
+    }
+    .proforma-label { min-width: 0; }
+    .proforma-value-box {
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
+    }
+    .proforma-value-box input[type="number"] {
+        min-height: 40px;
+        padding: 6px 4px;
+        font-size: 13px;
+        text-align: center !important;
+    }
+    .proforma-value-box .value-display {
+        min-height: 40px;
+        padding: 6px 4px;
+        font-size: 13px;
+        text-align: center !important;
+    }
+    .main-container-jdp input[type="number"],
+    .main-container-jdp .value-display { text-align: center !important; }
+
+    .proforma-box { padding: 12px 14px; margin: 14px 0; }
+    /* Misma estructura que escritorio: auto 1fr para que Total/Inicial no se muevan */
+    .proforma-box-total,
+    .proforma-box-inicial,
+    .proforma-box-total-cuotas {
+        grid-template-columns: auto 1fr;
+        gap: 8px 12px;
+        padding: 6px 12px;
+        margin: 14px 0;
+    }
+    .proforma-box-total .box-value-input,
+    .proforma-box-inicial input,
+    .proforma-box-total-cuotas .box-value-input {
+        justify-self: end;
+        min-height: 28px;
+        height: 28px;
+        padding: 2px 6px;
+    }
+
+    .saldo-section .section-label { font-size: 0.9rem; margin-bottom: 10px; }
+    .saldo-section-wrap { max-width: 100%; min-width: 0; justify-content: center; }
+    /* En celular: sin desplazamiento a la derecha para que no se esconda nada */
+    .saldo-section-box {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding-left: 12px;
+        padding-right: 14px;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Pantalla pequeña: filas al 100% para que no quede hueco a la derecha; alineación uniforme */
+    .cuotas-row,
+    .cuotas-row-stack {
+        flex-direction: column;
+        align-items: stretch;
+        min-width: 0;
+        width: 100%;
+        gap: 5px 0;
+    }
+    .cuota-item {
+        display: grid;
+        grid-template-columns: 32px 72px 48px minmax(0, 1fr);
+        align-items: center;
+        gap: 0 8px;
+        font-size: 0.82rem;
+        min-width: 0;
+    width: 100%;
+        max-width: 100%;
+    }
+    .cuota-item.cuota-extra { grid-template-columns: 32px 72px; }
+    .cuota-item-deletable { grid-template-columns: 32px 72px 48px 24px minmax(0, 1fr); }
+    .cuota-item-deletable .btn-delete-cuota-row { grid-column: 4; justify-self: start; }
+    .cuota-item-extra { grid-template-columns: 32px 72px 48px 24px minmax(0, 1fr); }
+    .cuota-item-extra .btn-delete-extra-row { grid-column: 4; justify-self: start; }
+    .cuota-item-con-celdas { grid-template-columns: 32px 72px 48px minmax(120px, 1fr); }
+    .cuotas-row .cuota-num,
+    .cuotas-row .cuota-monto {
+        min-height: 32px;
+        height: 32px;
+        padding: 4px;
+        font-size: 13px;
+        text-align: center;
+        box-sizing: border-box;
+    }
+    .cuotas-row .cuota-num { width: 32px; min-width: 32px; max-width: 32px; }
+    .cuotas-row .cuota-monto { width: 48px; min-width: 48px; max-width: 48px; }
+    .cuota-celdas-container { max-width: 100%; }
+    .cuota-icon-y-celdas { min-width: min-content; flex-shrink: 0; }
+    .cuota-celda-row .cuota-celda { width: 38px; min-width: 38px; max-width: 38px; }
+
+    .proforma-box-terms {
+        margin-top: 12px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .proforma-box-terms .term-input-col { margin-left: 0; }
+    .proforma-box-terms .term-row-box .term-unit {
+        margin-left: 0;
+        overflow: visible;
+        text-overflow: clip;
+    }
+    .proforma-box-terms .term-row-box {
+        padding: 8px 0;
+        grid-template-columns: 160px 64px 1fr;
+        gap: 8px 6px;
+    }
+    .proforma-box-terms .term-note { margin-top: 10px; font-size: 0.8rem; }
+
+    .proforma-box-asesora { margin-top: 18px; padding: 14px; }
+    .asesora-row {
+    grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    .asesora-label { font-size: 0.85rem; white-space: normal; }
+    .asesora-row input {
+        min-height: 44px;
+        padding: 10px 12px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+
+    .proforma-actions { margin-top: 22px; }
+    .btn-generate-jdp {
+        width: 100%;
+        max-width: 100%;
+        min-height: 48px;
+        padding: 14px 20px;
+    font-size: 1rem;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Tablet (ej. Galaxy Tab 606px): contenido Saldo y Términos a la derecha como en pantalla grande */
+@media (min-width: 520px) and (max-width: 768px) {
+    .saldo-section-box {
+        padding-left: 36px;
+        padding-right: 28px;
+    }
+    .proforma-box-terms {
+        padding-left: 27px;
+        padding-right: 24px;
+    }
+    /* Solo input y unidades (Días, Soles) más a la derecha */
+    .proforma-box-terms .term-input-col {
+        margin-left: 54px;
+    }
+    .proforma-box-terms .term-row-box .term-unit {
+        margin-left: 24px;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}
+
+/* ========== PROFORMA RESPONSIVE - MÃ“VIL PEQUEÃ‘O ========== */
+@media (max-width: 380px) {
+    .header-jdp-inner h1 { font-size: 1rem; }
+    .tagline-jdp { font-size: 0.7rem; }
+    .proforma-wrap { padding-left: 10px; padding-right: 10px; }
+    .proforma-content { padding: 14px 12px; }
+    .proforma-document { padding: 16px 12px 14px; }
+    .proforma-title { font-size: 1.1rem; }
+    .proforma-label { font-size: 0.85rem; }
+    .saldo-section-box { min-width: 0; padding: 10px 12px 12px; }
+    .proforma-box-terms .term-row-box { grid-template-columns: 140px 56px 1fr; gap: 6px 4px; }
+    .proforma-box-terms .term-row-box .term-unit { overflow: visible; text-overflow: clip; }
+    .proforma-box-terms .term-input-col { width: 56px; min-width: 56px; max-width: 56px; }
+    .cuotas-row .cuota-num { width: 32px; min-width: 32px; max-width: 32px; }
+    .cuotas-row .cuota-monto { width: 48px; min-width: 48px; max-width: 48px; }
+    .proforma-value-box { width: 60px; min-width: 60px; max-width: 60px; }
+    .proforma-value-box input[type="number"],
+    .proforma-value-box .value-display { font-size: 12px; text-align: center !important; }
+    .main-container-jdp input[type="number"],
+    .main-container-jdp .value-display { text-align: center !important; }
+}
+
+/* Centrado value en input number (solo CSS, cualquier viewport) */
+#main-container.main-container-jdp input[type="number"],
+#main-container.main-container-jdp .proforma-value-box input,
+#main-container.main-container-jdp .proforma-value-box .value-display {
+    text-align: center !important;
+    direction: ltr !important;
+    font-weight: 400;
+    color: var(--jdp-texto);
 }
 

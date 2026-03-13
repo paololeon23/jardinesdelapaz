@@ -78,10 +78,10 @@ export function updateUI() {
 
     if (navigator.onLine) {
         if (statusText) statusText.textContent = "En línea";
-        if (statusCard) statusCard.className = "status-card online";
+        if (statusCard) statusCard.className = "status-card-jdp online";
     } else {
-        if (statusText) statusText.textContent = "Sin conexión";
-        if (statusCard) statusCard.className = "status-card offline";
+        if (statusText) statusText.textContent = "Sin línea";
+        if (statusCard) statusCard.className = "status-card-jdp offline";
     }
 }
 
