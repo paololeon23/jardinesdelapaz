@@ -160,18 +160,57 @@ body {
 }
 
 .main-container-jdp h2,
-.proforma-title {
-    color: var(--jdp-verde);
+.proforma-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 0 0 15px 0;
+}
+.proforma-title-row {
     border-bottom: 2px solid var(--jdp-dorado);
     padding-bottom: 10px;
-    margin: 0 0 20px 0;
+}
+.proforma-title {
+    color: var(--jdp-verde);
+    margin: 0;
+    margin-top: 4px;
+    padding: 0;
     font-size: 1.2rem;
     letter-spacing: 0.02em;
     text-align: center;
     font-weight: 700;
+    line-height: 1.2;
+    align-self: center;
+    border: none;
+}
+.proforma-codigo-input {
+    width: 100px;
+    min-width: 80px;
+    padding: 6px 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--jdp-verde);
+    text-align: center;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 8px;
+    background: #fff;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.proforma-codigo-input::-webkit-outer-spin-button,
+.proforma-codigo-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.proforma-codigo-input:focus {
+    outline: none;
+    border-color: var(--jdp-verde);
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.15);
 }
 
-/* Fila: Label -----> valor (en una lÃ­nea) */
+/* Fila: Label -----> valor (en una línea) */
 .proforma-grid {
     display: flex; 
     flex-direction: column;
@@ -186,17 +225,103 @@ body {
 
 .proforma-grid-row:last-child { margin-bottom: 0; }
 
+.restore-rows-wrap { margin: 8px 0 14px 0; text-align: left; }
+.restore-add-rows-wrap {
+    display: flex; 
+    flex-wrap: wrap;
+    align-items: center; 
+    gap: 8px 12px;
+    margin: 8px 0 14px 0;
+}
+.restore-add-rows-wrap #restore-rows-wrap { margin: 0; }
+.restore-add-rows-wrap #restore-rows-wrap[style*="display: none"] { display: none !important; }
+/* Restaurar filas: estilo verde (igual que antes) */
+.btn-restore-rows {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border: 1px solid var(--jdp-verde);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--jdp-verde);
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-restore-rows:hover {
+    background: var(--jdp-verde);
+    color: #fff;
+}
+.btn-restore-rows:focus,
+.btn-restore-rows:active {
+    outline: none; 
+    border-color: var(--jdp-verde);
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.25);
+}
+
+/* Solo el botón Añadir fila es dorado */
+.btn-add-cost-row {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 6px;
+    background: #fcfaf5;
+    color: var(--jdp-dorado);
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-add-cost-row svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+#btn-add-cost-row {
+    visibility: visible;
+}
+#wrap-restore-add-buttons {
+    display: flex !important;
+    visibility: visible !important;
+}
+.btn-add-cost-row:hover { background: var(--jdp-dorado); color: #fff; }
+.btn-add-cost-row:focus,
+.btn-add-cost-row:active {
+    outline: none;
+    border-color: var(--jdp-dorado);
+    box-shadow: 0 0 0 2px rgba(166, 137, 74, 0.35);
+    background: rgba(166, 137, 74, 0.12);
+    color: var(--jdp-dorado);
+}
+.btn-add-cost-row:focus:hover,
+.btn-add-cost-row:active:hover {
+    background: var(--jdp-dorado);
+    color: #fff;
+}
+
 /* Fila: label y flecha a la izquierda, valor siempre a la derecha (como en pantalla pequeña) */
 .proforma-row-inline {
     display: grid;
-    grid-template-columns: 1fr auto 64px;
+    grid-template-columns: 1fr auto auto 64px auto;
     align-items: center;
     gap: 0 8px;
 }
 
 .proforma-row-inline .proforma-label { grid-column: 1; min-width: 0; }
-.proforma-row-inline .proforma-arrow { grid-column: 2; }
-.proforma-row-inline .proforma-value-box { grid-column: 3; justify-self: end; }
+.proforma-row-inline .btn-edit-row { grid-column: 2; }
+.proforma-row-inline .proforma-arrow { grid-column: 3; }
+.proforma-row-inline .proforma-value-box { grid-column: 4; justify-self: end; }
+.proforma-row-inline .btn-delete-cost-row { grid-column: 5; }
+.proforma-row-inline .btn-add-cost-row {
+    grid-column: 5;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.proforma-row-inline .btn-add-cost-row svg { width: 18px; height: 18px; }
+.proforma-row-inline .proforma-delete-placeholder { grid-column: 5; width: 28px; }
 
 .proforma-label {
     margin: 0;
@@ -207,6 +332,46 @@ body {
 }
 
 .proforma-label-bold { font-weight: 700; }
+
+/* Botón editar fila (lápiz) */
+.btn-edit-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 6px;
+    background: #fcfaf5;
+    color: var(--jdp-dorado);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-edit-row:hover {
+    background: var(--jdp-dorado);
+    color: #fff;
+}
+.btn-edit-row svg { width: 14px; height: 14px; }
+.btn-delete-cost-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #c62828;
+    border-radius: 6px;
+    background: #fff;
+    color: #c62828;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-delete-cost-row:hover {
+    background: #c62828;
+    color: #fff;
+}
+.btn-delete-cost-row svg { width: 14px; height: 14px; }
 
 /* Flecha -----> estilo empresarial */
 .proforma-arrow {
@@ -298,8 +463,8 @@ body {
 .proforma-box {
     border: 2px solid var(--jdp-verde);
     border-radius: 8px;
-    padding: 12px 14px;
-    margin: 14px 0;
+    padding: 8px 14px;
+    margin: 10px 0;
     background: rgba(26, 71, 49, 0.06);
     text-align: left;
 }
@@ -310,9 +475,9 @@ body {
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: center;
-    gap: 8px 12px;
-    padding: 6px 12px;
-    margin: 14px 0;
+    gap: 4px 12px;
+    padding: 4px 12px;
+    margin: 8px 0;
 }
 
 /* Total con descuento, Inicial y Total (cuotas): label a la izquierda, valor a la derecha */
@@ -324,6 +489,91 @@ body {
 .proforma-box-inicial input {
     grid-column: 2;
     justify-self: end;
+}
+
+/* Caja Datos / Celular / Dirección: mismo estilo que Total con descuento */
+.proforma-document .proforma-box-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    text-align: left;
+    padding: 6px 14px;
+}
+.proforma-box-datos-row {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+    min-width: 0;
+}
+.proforma-box-datos-row .box-label {
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--jdp-verde);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+/* Mismo espacio después de ":" para los tres (Datos, Número celular, Dirección) */
+.proforma-box-datos-row .box-input-text {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 3px 12px 3px 16px !important;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: var(--jdp-texto);
+    background: #fff;
+    box-sizing: border-box;
+    display: block;
+    text-align: left !important;
+}
+.proforma-box-datos-row .box-input-text[type="text"],
+.proforma-box-datos-row .box-input-text[type="tel"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    padding-left: 20px !important;
+}
+/* Segunda fila (Número celular): más espacio después del label para igualar a Datos */
+.proforma-box-datos-row:nth-child(2) .box-label {
+    padding-right: 22px;
+}
+.proforma-box.proforma-box-datos input#pro_celular {
+    padding-left: 20px !important;
+}
+/* La caja de datos ocupa todo el ancho disponible */
+.proforma-box.proforma-box-datos {
+    width: 100%;
+}
+.proforma-box-datos-row .box-input-text:focus {
+    outline: none;
+    border-color: var(--jdp-verde);
+}
+.proforma-box-datos-row .box-input-text::placeholder {
+    color: #999;
+}
+
+/* Anular ancho fijo de .box-value-input en la caja de datos: inputs al 100% hasta el final */
+.proforma-box.proforma-box-datos .box-value-input.box-input-text {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 20px !important;
+    text-align: left !important;
+    padding-left: 24px !important;
+    padding-right: 16px !important;
+}
+
+.proforma-datos-linea {
+    border: none;
+    border-top: 2px solid var(--jdp-dorado);
+    margin: 16px 0 20px 0;
+    width: 100%;
 }
 
 /* Términos: mismo estilo que Total con descuento */
@@ -342,8 +592,8 @@ body {
     display: grid;
     grid-template-columns: 200px 64px auto;
     align-items: center;
-    gap: 10px 7px;
-    padding: 4px 16px 10px 6px;
+    gap: 8px 7px;
+    padding: 4px 12px 6px 6px;
     border-bottom: 1px solid var(--jdp-verde);
 }
 .proforma-box-terms .term-row-box:last-of-type {
@@ -382,12 +632,167 @@ body {
     text-overflow: ellipsis;
     text-align: center;
 }
+/* Fila CUA: icono + en el hueco (position absolute) para no empujar el input a la derecha; 600 alineado con 30 y 1400 */
+.proforma-box-terms .term-row-cua .term-cua-label-wrap {
+    grid-column: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.proforma-box-terms .term-row-cua .term-input-col { grid-column: 2; }
+.proforma-box-terms .term-row-cua .term-unit { grid-column: 3; }
+.proforma-box-terms .term-row-cua .btn-add-nivel {
+    position: absolute;
+    right: -28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.9);
+}
+.proforma-box-terms .btn-add-nivel {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    padding: 0;
+    border: 1px solid var(--jdp-dorado);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--jdp-dorado);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    box-sizing: border-box;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.proforma-box-terms .btn-add-nivel span {
+    display: block;
+    line-height: 1;
+    transform: translateY(-1px);
+}
+.proforma-box-terms .btn-add-nivel:hover,
+.proforma-box-terms .btn-add-nivel:focus,
+.proforma-box-terms .btn-add-nivel:active {
+    border-color: var(--jdp-dorado);
+    background: rgba(166, 137, 74, 0.12);
+    color: var(--jdp-dorado);
+}
+.proforma-box-terms.nivel-max .btn-add-nivel {
+    display: none !important;
+}
+@media (min-width: 769px) {
+    .proforma-box-terms .term-row-cua .btn-add-nivel {
+        right: -18px;
+    }
+}
+.term-nivel-wrapper {
+    margin-top: 10px;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.term-nivel-box {
+    padding: 0;
+    overflow: visible;
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 100%;
+}
+.term-nivel-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.term-nivel-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--jdp-verde);
+}
+.term-nivel-row-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1px solid var(--jdp-verde);
+    border-radius: 6px;
+    background: rgba(26, 71, 49, 0.03);
+}
+.term-nivel-col {
+    padding: 6px 10px;
+}
+.term-nivel-label {
+    text-align: center;
+    border-right: 1px solid var(--jdp-verde);
+}
+.term-nivel-input-wrap {
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+}
+.term-nivel-row .btn-delete-nivel {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border: 1px solid #c62828;
+    border-radius: 4px;
+    background: #fff;
+    color: #c62828;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+.term-nivel-row .btn-delete-nivel:hover {
+    background: #c62828;
+    color: #fff;
+}
+.term-nivel-row .btn-delete-nivel .lucide,
+.term-nivel-row .btn-delete-nivel svg {
+    width: 12px;
+    height: 12px;
+}
+.term-nivel-select {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--jdp-verde);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+.term-nivel-select:focus {
+    border-color: var(--jdp-dorado);
+    outline: none;
+}
+
 .proforma-box-terms .term-note {
-    margin: 8px 0 0 0;
-    font-size: 0.78rem;
+    margin: 4px 0 0 0;
+    padding-left: 0;
+    font-size: 0.68rem;
     color: var(--jdp-texto);
     opacity: 0.9;
-    text-align: center;
+    text-align: left;
+    text-transform: uppercase;
 }
 
 .proforma-box .box-label,
@@ -726,10 +1131,10 @@ body {
     min-width: 18px;
     min-height: 18px;
     padding: 0;
-    border: 1px solid #c9a962;
+    border: 1px solid #c62828;
     border-radius: 4px;
     background: #fff;
-    color: #8b6914;
+    color: #c62828;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -740,9 +1145,9 @@ body {
 }
 
 .btn-delete-celda:hover {
-    background: var(--jdp-verde);
+    background: #c62828;
     color: #fff;
-    border-color: var(--jdp-verde);
+    border-color: #c62828;
 }
 
 .btn-delete-celda .lucide,
@@ -834,18 +1239,21 @@ body {
 }
 
 
+.proforma-box-asesora {
+    padding: 8px 14px;
+}
 .asesora-row {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex;
     align-items: center;
-    gap: 12px 16px;
-    margin-bottom: 10px;
+    gap: 4px;
+    margin-bottom: 4px;
 }
 
 .asesora-row:last-child { margin-bottom: 0; }
 
 .asesora-label {
     margin: 0;
+    flex-shrink: 0;
     font-weight: 700;
     color: var(--jdp-verde);
     font-size: 0.85rem;
@@ -854,13 +1262,15 @@ body {
 }
 
 .asesora-row input {
-    min-width: 0;
-    padding: 6px 8px;
+    flex: 1 1 0;
+        min-width: 0;
+    padding: 6px 8px 6px 6px;
     border: 1px solid var(--jdp-dorado);
     border-radius: 4px;
-    font-size: 0.85rem;
+        font-size: 0.85rem;
     color: var(--jdp-texto);
     box-sizing: border-box;
+    text-align: left !important;
 }
 
 .asesora-row input:focus {
@@ -904,20 +1314,26 @@ body {
 }
 
 .btn-generate-jdp:active { transform: translateY(0); }
+.btn-generate-jdp:focus,
+.btn-generate-jdp:active {
+    outline: none;
+    border-color: var(--jdp-verde);
+    background-color: var(--jdp-verde);
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(26, 71, 49, 0.3);
+}
 
 /* ========== PANTALLA COMPLETA (COMPUTADORA) – inputs más anchos, centrado visible ========== */
 @media (min-width: 769px) {
     .proforma-wrap {
         max-width: 580px;
-        margin-left: auto;
-        margin-right: auto;
+        margin: 0 auto;
         padding-left: 32px;
         padding-right: 32px;
     }
     .proforma-content {
         max-width: 540px;
-        margin-left: auto;
-        margin-right: auto;
+        margin: 0 auto;
         padding: 22px 24px;
     }
     .proforma-document {
@@ -927,7 +1343,7 @@ body {
     }
     /* Grid filas: columna del valor más ancha para que el número se vea en el medio */
     .proforma-row-inline {
-        grid-template-columns: 1fr auto 96px;
+        grid-template-columns: 1fr auto auto 96px auto;
         gap: 0 12px;
     }
     .proforma-value-box {
@@ -951,7 +1367,7 @@ body {
         border-radius: 8px;
     }
     .proforma-value-box .value-display {
-        height: 44px;
+    height: 44px;
         min-height: 44px;
         line-height: 44px;
         font-size: 14px;
@@ -1077,7 +1493,7 @@ body {
     }
     .proforma-content { padding: 24px 20px; }
     .proforma-document { padding: 24px 20px 0px; }
-    .proforma-title { font-size: 1.3rem; margin-bottom: 20px; }
+    .proforma-title { font-size: 1.3rem; margin-top: 10px !important;; }
     .main-container-jdp input[type="number"],
     .main-container-jdp .value-display { text-align: center !important; }
 }
@@ -1096,8 +1512,8 @@ body {
     .proforma-wrap {
         padding: 16px max(12px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right));
     max-width: 100%;
-        box-sizing: border-box;
-    }
+    box-sizing: border-box;
+}
     .proforma-content {
         padding: 18px 14px;
         border-radius: 10px;
@@ -1116,11 +1532,11 @@ body {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
-    .proforma-title { font-size: 1.2rem; padding-bottom: 10px; margin-bottom: 20px; }
+    .proforma-title { font-size: 1.2rem; margin-bottom: 20px; }
 
     .proforma-grid-row { margin-bottom: 12px; }
     .proforma-row-inline {
-        grid-template-columns: 1fr auto 64px;
+        grid-template-columns: 1fr auto auto 64px auto;
         gap: 0 8px;
     }
     .proforma-label { min-width: 0; }
@@ -1144,15 +1560,15 @@ body {
     .main-container-jdp input[type="number"],
     .main-container-jdp .value-display { text-align: center !important; }
 
-    .proforma-box { padding: 12px 14px; margin: 14px 0; }
+    .proforma-box { padding: 8px 14px; margin: 10px 0; }
     /* Misma estructura que escritorio: auto 1fr para que Total/Inicial no se muevan */
     .proforma-box-total,
     .proforma-box-inicial,
     .proforma-box-total-cuotas {
         grid-template-columns: auto 1fr;
-        gap: 8px 12px;
-        padding: 6px 12px;
-        margin: 14px 0;
+        gap: 4px 12px;
+        padding: 4px 12px;
+        margin: 8px 0;
     }
     .proforma-box-total .box-value-input,
     .proforma-box-inicial input,
@@ -1167,7 +1583,7 @@ body {
     .saldo-section-wrap { max-width: 100%; min-width: 0; justify-content: center; }
     /* En celular: sin desplazamiento a la derecha para que no se esconda nada */
     .saldo-section-box {
-        width: 100%;
+    width: 100%;
         min-width: 0;
         max-width: 100%;
         padding-left: 12px;
@@ -1222,7 +1638,7 @@ body {
     }
     .proforma-box-terms .term-input-col { margin-left: 0; }
     .proforma-box-terms .term-row-box .term-unit {
-        margin-left: 0;
+        margin-right: 12px;
         overflow: visible;
         text-overflow: clip;
     }
@@ -1233,7 +1649,7 @@ body {
     }
     .proforma-box-terms .term-note { margin-top: 10px; font-size: 0.8rem; }
 
-    .proforma-box-asesora { margin-top: 18px; padding: 14px; }
+    .proforma-box-asesora { margin-top: 18px; padding: 8px 14px; }
     .asesora-row {
     grid-template-columns: 1fr;
         gap: 6px;

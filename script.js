@@ -9,6 +9,20 @@ const VERDE = '#1a4731';
 const DORADO = '#a6894a';
 const STORAGE_KEY = 'jardines_de_la_paz_proforma';
 
+const DEFAULT_LABELS = {
+    pro_lote: 'Lote doble encofrado',
+    pro_servicio: 'Servicio funerario estándar',
+    pro_total: 'Total',
+    pro_descuento: 'Descuento SIS (Deuda pend.)'
+};
+
+function getLabel(id) {
+    const el = document.getElementById('label_' + id);
+    if (!el) return DEFAULT_LABELS[id] || '';
+    const t = String(el.textContent || '').trim();
+    return t || DEFAULT_LABELS[id] || '';
+}
+
 function getNum(id) {
     const el = document.getElementById(id);
     if (!el) return 0;
@@ -22,7 +36,11 @@ function getStr(id) {
 }
 
 function getTotal() {
-    return getNum('pro_lote') + getNum('pro_servicio');
+    let s = getNum('pro_lote') + getNum('pro_servicio');
+    document.querySelectorAll('.proforma-grid [id^="pro_extra_"]').forEach(function (el) {
+        if (el.id && el.value !== undefined) s += parseFloat(String(el.value || '0').replace(',', '.'), 10) || 0;
+    });
+    return s;
 }
 
 function getNeto() {
@@ -73,11 +91,27 @@ function guardarProforma() {
     try {
         const ids = ['pro_lote', 'pro_servicio', 'pro_descuento', 'pro_neto_display', 'pro_inicial',
             'pro_cuotas_18', 'pro_monto_18', 'pro_cuotas_28', 'pro_monto_28', 'pro_cuotas_01', 'pro_monto_01',
-            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono'];
+            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono', 'pro_datos', 'pro_celular', 'pro_direccion', 'pro_codigo'];
         const data = {};
         ids.forEach(id => {
             const el = document.getElementById(id);
             if (el && 'value' in el) data[id] = el.value;
+        });
+        data.labels = {};
+        ['pro_lote', 'pro_servicio', 'pro_total', 'pro_descuento'].forEach(id => {
+            const lab = document.getElementById('label_' + id);
+            if (lab) data.labels[id] = lab.textContent || DEFAULT_LABELS[id] || '';
+        });
+        data.deletedCostRows = [];
+        ['pro_lote', 'pro_servicio', 'pro_descuento'].forEach(id => {
+            if (!document.getElementById(id)) data.deletedCostRows.push(id);
+        });
+        data.extraCostRows = [];
+        document.querySelectorAll('.proforma-grid-row[data-row-id^="pro_extra_"]').forEach(function (row) {
+            const id = row.getAttribute('data-row-id');
+            const labelEl = document.getElementById('label_' + id);
+            const valueEl = document.getElementById(id);
+            if (id && labelEl && valueEl) data.extraCostRows.push({ id: id, label: labelEl.textContent || '', value: valueEl.value || '' });
         });
         const container = document.getElementById('cuota-celdas-container');
         data.celdas = [];
@@ -93,6 +127,14 @@ function guardarProforma() {
                 if (num && monto) data.extraRows.push({ cuotas: num.value || '0', monto: monto.value || '0' });
             });
         }
+        data.nivelRows = [];
+        const nivelCont = document.getElementById('term-nivel-rows');
+        if (nivelCont) {
+            nivelCont.querySelectorAll('.term-nivel-row').forEach(function(row) {
+                const sel = row.querySelector('.term-nivel-select');
+                if (sel) data.nivelRows.push(sel.value || 'PAGA');
+            });
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {}
 }
@@ -105,11 +147,24 @@ function cargarProforma() {
         const data = JSON.parse(raw);
         const ids = ['pro_lote', 'pro_servicio', 'pro_descuento', 'pro_neto_display', 'pro_inicial',
             'pro_cuotas_18', 'pro_monto_18', 'pro_cuotas_28', 'pro_monto_28', 'pro_cuotas_01', 'pro_monto_01',
-            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono'];
+            'pro_carencia', 'pro_reintegro', 'pro_cua', 'pro_asesora', 'pro_telefono', 'pro_datos', 'pro_celular', 'pro_direccion', 'pro_codigo'];
         ids.forEach(id => {
             if (data[id] === undefined) return;
             const el = document.getElementById(id);
             if (el && 'value' in el) el.value = data[id];
+        });
+        if (data.labels && typeof data.labels === 'object') {
+            Object.keys(data.labels).forEach(id => {
+                const lab = document.getElementById('label_' + id);
+                if (lab && data.labels[id]) lab.textContent = data.labels[id];
+            });
+        }
+        (data.deletedCostRows || []).forEach(id => {
+            const row = document.querySelector('.proforma-grid-row[data-row-id="' + id + '"]');
+            if (row) row.remove();
+        });
+        (data.extraCostRows || []).forEach(function (item) {
+            if (item.id && item.label !== undefined) agregarFilaCosto(item.id, item.label, item.value);
         });
         const extraCont = document.getElementById('cuotas-extra-container');
         if (extraCont && Array.isArray(data.extraRows) && data.extraRows.length > 0) {
@@ -130,7 +185,76 @@ function cargarProforma() {
             }
             if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
         }
+        /* Nivel: no restaurar filas al cargar; solo se muestra el icono + hasta que el usuario pulse */
     } catch (e) {}
+}
+
+const NIVEL_MAX = 4;
+
+function crearNivelRowHtml(nivelNum, selectValue) {
+    const val = selectValue === 'NO PAGA' ? 'NO PAGA' : 'PAGA';
+    return '<div class="term-nivel-row" data-nivel="' + nivelNum + '">' +
+        '<div class="term-nivel-row-inner">' +
+        '<span class="term-nivel-col term-nivel-label">' + nivelNum + ' NIVEL</span>' +
+        '<span class="term-nivel-col term-nivel-input-wrap">' +
+        '<select class="term-nivel-select" aria-label="Paga o no paga">' +
+        '<option value="PAGA"' + (val === 'PAGA' ? ' selected' : '') + '>PAGA</option>' +
+        '<option value="NO PAGA"' + (val === 'NO PAGA' ? ' selected' : '') + '>NO PAGA</option>' +
+        '</select>' +
+        '</span>' +
+        '</div>' +
+        '<button type="button" class="btn-delete-nivel" title="Eliminar nivel" aria-label="Eliminar nivel"><i data-lucide="trash-2"></i></button>' +
+        '</div>';
+}
+
+function renumerarNivelRows() {
+    const container = document.getElementById('term-nivel-rows');
+    if (!container) return;
+    const rows = container.querySelectorAll('.term-nivel-row');
+    rows.forEach(function (row, i) {
+        const n = i + 1;
+        row.setAttribute('data-nivel', String(n));
+        const label = row.querySelector('.term-nivel-label');
+        if (label) label.textContent = n + ' NIVEL';
+    });
+}
+
+function actualizarVisibilidadNivelBox() {
+    const container = document.getElementById('term-nivel-rows');
+    const box = document.getElementById('term-nivel-box');
+    const wrapper = box && box.parentElement;
+    const termsBox = document.querySelector('.proforma-box-terms');
+    if (!container || !box || !wrapper) return;
+    const cnt = container.children.length;
+    box.style.display = cnt > 0 ? '' : 'none';
+    if (termsBox) termsBox.classList.toggle('nivel-max', cnt >= NIVEL_MAX);
+}
+
+function rebuildNivelRows(values) {
+    const container = document.getElementById('term-nivel-rows');
+    if (!container) return;
+    container.innerHTML = '';
+    (values || []).forEach(function (val, i) {
+        const n = i + 1;
+        const div = document.createElement('div');
+        div.innerHTML = crearNivelRowHtml(n, val);
+        container.appendChild(div.firstElementChild);
+    });
+    actualizarVisibilidadNivelBox();
+}
+
+function agregarNivelRow() {
+    const container = document.getElementById('term-nivel-rows');
+    if (!container) return;
+    const cnt = container.children.length;
+    if (cnt >= NIVEL_MAX) return;
+    const n = cnt + 1;
+    const div = document.createElement('div');
+    div.innerHTML = crearNivelRowHtml(n, 'PAGA');
+    container.appendChild(div.firstElementChild);
+    actualizarVisibilidadNivelBox();
+    guardarProforma();
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 }
 
 const CELDAS_MAX = 10;
@@ -257,6 +381,31 @@ function resetCeldasCuota480() {
     }
 }
 
+function crearFilaCuotaSaldo(idCuotas, idMonto, valueCuotas, valueMonto) {
+    const span = document.createElement('span');
+    span.className = 'cuota-item cuota-item-deletable';
+    span.innerHTML = '<input type="number" id="' + idCuotas + '" value="' + valueCuotas + '" min="1" class="cuota-num" aria-label="Número de cuotas">' +
+        '<span class="cuota-label"><span class="cuota-label-text" data-for="' + idCuotas + '">cuotas</span> <span class="cuota-arrow">---></span></span>' +
+        '<input type="number" id="' + idMonto + '" value="' + valueMonto + '" min="0" class="cuota-monto" aria-label="Monto cuota">' +
+        '<button type="button" class="btn-delete-celda btn-delete-cuota-row" title="Eliminar" aria-label="Eliminar opción"><i data-lucide="trash-2"></i></button>';
+    return span;
+}
+
+function restauraFilasCuotaSaldo() {
+    const stack = document.querySelector('.cuotas-row-stack');
+    if (!stack) return;
+    const refRow = stack.querySelector('.cuota-item-con-celdas');
+    if (!refRow) return;
+    if (!document.getElementById('pro_cuotas_28')) {
+        const row28 = crearFilaCuotaSaldo('pro_cuotas_28', 'pro_monto_28', 28, 158);
+        stack.insertBefore(row28, refRow);
+    }
+    if (!document.getElementById('pro_cuotas_18')) {
+        const row18 = crearFilaCuotaSaldo('pro_cuotas_18', 'pro_monto_18', 18, 209);
+        stack.insertBefore(row18, refRow);
+    }
+}
+
 function agregarCeldaCuota480() {
     const cont = document.getElementById('cuota-celdas-container');
     const btnAdd = document.getElementById('btn-add-celda');
@@ -277,6 +426,17 @@ function agregarCeldaCuota480() {
 }
 
 function limpiarForm() {
+    // Restaurar las 3 filas de costos por defecto si el usuario las eliminó
+    restauraFilasEliminadas();
+    // Quitar todas las filas extra que el usuario añadió con "+" (detalle de costos)
+    document.querySelectorAll('.proforma-grid-row[data-row-id^="pro_extra_"]').forEach(function (row) {
+        row.remove();
+    });
+    // Saldo: vaciar opciones de cuotas añadidas con "+" y restaurar 18 y 28 cuotas si se eliminaron
+    const extraCont = document.getElementById('cuotas-extra-container');
+    if (extraCont) extraCont.innerHTML = '';
+    restauraFilasCuotaSaldo();
+
     const defaults = {
         pro_lote: 8570,
         pro_servicio: 2148,
@@ -293,20 +453,185 @@ function limpiarForm() {
         pro_reintegro: 1400,
         pro_cua: 600,
         pro_asesora: 'Guadalupe Antunez',
-        pro_telefono: '966192366'
+        pro_telefono: '966192366',
+        pro_datos: '',
+        pro_celular: '',
+        pro_direccion: '',
+        pro_codigo: ''
     };
     Object.keys(defaults).forEach(id => {
         const el = document.getElementById(id);
         if (el && 'value' in el) el.value = defaults[id];
     });
     resetCeldasCuota480();
+    rebuildNivelRows([]);
     const btnAdd = document.getElementById('btn-add-celda');
     if (btnAdd) {
         btnAdd.disabled = false;
         btnAdd.setAttribute('title', 'Agregar celda');
     }
     updateDisplays();
+    Object.keys(DEFAULT_LABELS).forEach(id => {
+        const lab = document.getElementById('label_' + id);
+        if (lab) lab.textContent = DEFAULT_LABELS[id];
+    });
+    actualizarVisibilidadRestaurarFilas();
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+const COST_ROW_DEFAULTS = { pro_lote: { label: 'Lote doble encofrado', value: 8570 }, pro_servicio: { label: 'Servicio funerario estándar', value: 2148 }, pro_descuento: { label: 'Descuento SIS (Deuda pend.)', value: -1000 } };
+
+function crearCostRowHTML(rowId) {
+    const d = COST_ROW_DEFAULTS[rowId];
+    if (!d) return '';
+    const label = (d.label || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    return '<div class="proforma-grid-row proforma-row-inline" data-row-id="' + rowId + '">' +
+        '<label for="' + rowId + '" id="label_' + rowId + '" class="proforma-label">' + label + '</label>' +
+        '<button type="button" class="btn-edit-row" data-row="' + rowId + '" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>' +
+        '<span class="proforma-arrow" aria-hidden="true">-----></span>' +
+        '<div class="proforma-value-box">' +
+        '<input type="number" id="' + rowId + '" name="' + rowId + '" value="' + d.value + '" min="0" step="1" aria-label="' + rowId + '">' +
+        '</div>' +
+        '<button type="button" class="btn-delete-cost-row" data-row="' + rowId + '" title="Eliminar" aria-label="Eliminar fila"><i data-lucide="trash-2"></i></button>' +
+        '</div>';
+}
+
+function restauraFilasEliminadas() {
+    const grid = document.querySelector('.proforma-grid');
+    if (!grid) return;
+    const toRestore = ['pro_lote', 'pro_servicio', 'pro_descuento'].filter(id => !document.getElementById(id));
+    const sortOrder = { pro_lote: 0, pro_servicio: 1, pro_descuento: 2 };
+    toRestore.sort((a, b) => sortOrder[a] - sortOrder[b]);
+    if (toRestore.length === 0) {
+        const wrap = document.getElementById('restore-rows-wrap');
+        if (wrap) wrap.style.display = 'none';
+        return;
+    }
+    toRestore.forEach(rowId => {
+        const html = crearCostRowHTML(rowId);
+        if (!html) return;
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const row = temp.firstElementChild;
+        if (!row) return;
+        const refRow = grid.querySelector('[data-row-id="pro_total"]');
+        if (rowId === 'pro_descuento') {
+            if (refRow && refRow.nextElementSibling) grid.insertBefore(row, refRow.nextElementSibling);
+            else grid.appendChild(row);
+        } else {
+            const before = rowId === 'pro_lote' ? grid.firstElementChild : grid.querySelector('[data-row-id="pro_total"]');
+            if (before) grid.insertBefore(row, before);
+            else grid.appendChild(row);
+        }
+    });
+    updateDisplays();
+    guardarProforma();
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    const wrap = document.getElementById('restore-rows-wrap');
+    if (wrap) wrap.style.display = 'none';
+}
+
+function actualizarVisibilidadRestaurarFilas() {
+    const wrap = document.getElementById('restore-rows-wrap');
+    const container = document.getElementById('wrap-restore-add-buttons');
+    if (!wrap) return;
+    const falta = !document.getElementById('pro_lote') || !document.getElementById('pro_servicio') || !document.getElementById('pro_descuento');
+    wrap.style.display = falta ? 'inline' : 'none';
+    if (container) container.style.display = falta ? 'flex' : 'none';
+}
+
+function getNextExtraCostId() {
+    const existing = document.querySelectorAll('.proforma-grid-row[data-row-id^="pro_extra_"]');
+    let n = 0;
+    existing.forEach(function (row) {
+        const id = row.getAttribute('data-row-id');
+        if (id && id.startsWith('pro_extra_')) {
+            const num = parseInt(id.replace('pro_extra_', ''), 10);
+            if (!isNaN(num) && num >= n) n = num + 1;
+        }
+    });
+    return 'pro_extra_' + n;
+}
+
+function agregarFilaCosto(rowId, labelText, value) {
+    const grid = document.querySelector('.proforma-grid');
+    if (!grid) return;
+    const label = (labelText || 'Texto / Valor').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const val = (value === undefined || value === null) ? '' : String(value).replace(/"/g, '&quot;');
+    const html = '<div class="proforma-grid-row proforma-row-inline" data-row-id="' + rowId + '">' +
+        '<label for="' + rowId + '" id="label_' + rowId + '" class="proforma-label">' + label + '</label>' +
+        '<button type="button" class="btn-edit-row" data-row="' + rowId + '" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>' +
+        '<span class="proforma-arrow" aria-hidden="true">-----></span>' +
+        '<div class="proforma-value-box">' +
+        '<input type="number" id="' + rowId + '" name="' + rowId + '" value="' + val + '" min="0" step="1" aria-label="Valor">' +
+        '</div>' +
+        '<button type="button" class="btn-delete-cost-row" data-row="' + rowId + '" title="Eliminar" aria-label="Eliminar fila"><i data-lucide="trash-2"></i></button>' +
+        '</div>';
+    const refRow = grid.querySelector('[data-row-id="pro_total"]');
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const row = temp.firstElementChild;
+    if (!row) return;
+    if (refRow) grid.insertBefore(row, refRow);
+    else grid.appendChild(row);
+    updateDisplays();
+    guardarProforma();
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+function abrirEditarFila(rowId) {
+    const labelEl = document.getElementById('label_' + rowId);
+    const valueEl = document.getElementById(rowId);
+    const isTotal = rowId === 'pro_total';
+    const currentLabel = labelEl ? labelEl.textContent : (DEFAULT_LABELS[rowId] || '');
+    const currentValue = valueEl && 'value' in valueEl ? valueEl.value : (rowId === 'pro_total' ? String(getTotal()) : '');
+
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const html = isTotal
+        ? '<p style="text-align:left;margin:0 0 6px 0;color:#333;font-weight:600">Etiqueta</p><input id="swal-etiqueta" class="swal2-input" value="' + esc(currentLabel) + '" placeholder="Ej: Total">'
+        : '<p style="text-align:left;margin:0 0 6px 0;color:#333;font-weight:600">Etiqueta</p><input id="swal-etiqueta" class="swal2-input" value="' + esc(currentLabel) + '" placeholder="Nombre del concepto">' +
+          '<p style="text-align:left;margin:12px 0 6px 0;color:#333;font-weight:600">Valor</p><input type="number" id="swal-valor" class="swal2-input" value="' + esc(currentValue || '0') + '" placeholder="Monto">';
+
+    if (typeof Swal === 'undefined') {
+        const lab = prompt('Etiqueta:', currentLabel);
+        if (lab != null && labelEl) labelEl.textContent = lab;
+        if (!isTotal && valueEl) {
+            const val = prompt('Valor:', currentValue);
+            if (val != null) valueEl.value = val;
+        }
+        updateDisplays();
+        guardarProforma();
+        return;
+    }
+
+    Swal.fire({
+        title: 'Editar fila',
+        html: html,
+        showCancelButton: true,
+        confirmButtonText: 'Actualizar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: VERDE,
+        cancelButtonColor: '#888',
+        didOpen: () => {
+            const etiq = document.getElementById('swal-etiqueta');
+            const val = document.getElementById('swal-valor');
+            if (etiq) etiq.focus();
+            if (val && !isTotal) val.select && val.select();
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const etiq = document.getElementById('swal-etiqueta');
+        const val = document.getElementById('swal-valor');
+        if (labelEl && etiq) labelEl.textContent = (etiq.value || '').trim() || DEFAULT_LABELS[rowId] || '';
+        if (!isTotal && valueEl && val) {
+            const n = parseFloat(String(val.value).replace(',', '.'), 10);
+            valueEl.value = isNaN(n) ? valueEl.value : n;
+        }
+        updateDisplays();
+        guardarProforma();
+        if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    });
 }
 
 /** Valores actuales de las celdas de la cuota 480 (para PDF en tiempo real) */
@@ -326,7 +651,7 @@ function generarPDFBlob() {
     const doc = new JsPDF('p', 'mm', 'a4');
     const pageW = 210;
     const contentW = 170;
-    const m = (pageW - contentW) / 2;
+    const m = 15;
     const rightX = m + contentW;
     const verde = [26, 71, 49];
     const dorado = [166, 137, 74];
@@ -334,7 +659,20 @@ function generarPDFBlob() {
     const pad = 4;
     const rowH = 8;
     const borderHalf = 0.35 / 2;
-    let y = 16;
+    const pageH = 297;
+    const bottomMargin = 28;
+    const topMargin = 18;
+    const maxY = 299;
+    let y = 12;
+
+    function checkPage(spaceNeeded) {
+        if (y + (spaceNeeded || 0) > maxY) {
+            doc.addPage('p', 'mm', 'a4');
+            y = topMargin;
+            return true;
+        }
+        return false;
+    }
 
     const total = Math.round(getTotal());
     const neto = Math.round(getNum('pro_neto_display') || getNeto());
@@ -370,62 +708,112 @@ function generarPDFBlob() {
         doc.setFillColor(240, 248, 242);
         doc.rect(x, y, w, rowH + 2, 'FD');
         doc.setTextColor(...verde);
-        doc.setFont(undefined, 'bold');
+    doc.setFont(undefined, 'bold');
         doc.setFontSize(10);
         doc.text(title, x + pad, y + 6);
-        doc.setFont(undefined, 'normal');
+    doc.setFont(undefined, 'normal');
         doc.setTextColor(...texto);
         return y + rowH + 2;
     }
 
-    // --- Cabecera empresarial ---
+    // --- Cabecera: PARQUE ETERNO (izq) y JARDINES DE LA PAZ (der), pegados al borde dorado ---
+    y += 2;
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...verde);
+    doc.text('PARQUE ETERNO S.A.', m, y + 4);
+    doc.text('JARDINES DE LA PAZ', rightX, y + 4, { align: 'right' });
+    y += 6;
     doc.setDrawColor(...dorado);
     doc.setLineWidth(0.35);
     doc.line(m, y, rightX, y);
-    y += 10;
+    y += 11;
     doc.setTextColor(...verde);
-    doc.setFontSize(20);
+    doc.setFontSize(15);
     doc.setFont(undefined, 'bold');
-    doc.text('PROFORMA', pageW / 2, y, { align: 'center' });
+    const codigoStr = (getStr('pro_codigo') || '').trim();
+    const tituloPdf = 'PROFORMA : N° ' + (codigoStr || '.........');
+    doc.text(tituloPdf, pageW / 2, y, { align: 'center' });
+    doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(...texto);
-    y += 8;
+    y += 5;
+
+    // --- Datos / Celular / Dirección (antes de Detalle de costos) ---
+    const datosLabel = ['Datos:', 'Número celular:', 'Dirección:'];
+    const datosIds = ['pro_datos', 'pro_celular', 'pro_direccion'];
+    const datosRowH = 7;
+    const datosH = datosRowH * 3 + 2;
+    checkPage(datosH + 10);
+    doc.setFillColor(248, 250, 248);
+    doc.setDrawColor(...verde);
+    doc.setLineWidth(0.35);
+    doc.rect(m, y, contentW, datosH, 'FD');
+    doc.setFontSize(9);
+    doc.setTextColor(...texto);
+    datosLabel.forEach(function (lab, i) {
+        const val = getStr(datosIds[i]) || '-';
+        const yy = y + 6 + i * datosRowH;
+    doc.setFont(undefined, 'bold');
+        doc.setTextColor(...verde);
+        doc.text(lab, m + pad, yy);
+    doc.setFont(undefined, 'normal');
+        doc.setTextColor(...texto);
+        const labelW = typeof doc.getTextWidth === 'function' ? doc.getTextWidth(lab) : 25;
+        const espacioDespuesLabel = 3;
+        const valX = m + pad + labelW + espacioDespuesLabel;
+        const maxValW = contentW - (valX - m) - pad;
+        let valStr = val;
+        if (typeof doc.getTextWidth === 'function' && doc.getTextWidth(val) > maxValW && doc.splitTextToSize) {
+            valStr = doc.splitTextToSize(val, maxValW)[0] + '…';
+        }
+        doc.text(valStr, valX, yy);
+    });
+    y += datosH + 6;
 
     // --- Tabla: Detalle de costos ---
+    const costos = [];
+    document.querySelectorAll('.proforma-grid .proforma-grid-row').forEach(function (row) {
+        const id = row.getAttribute('data-row-id');
+        if (!id) return;
+        const label = getLabel(id);
+        const val = id === 'pro_total' ? total : getNum(id);
+        costos.push([label, val, id === 'pro_total']);
+    });
+    checkPage(rowH + costos.length * rowH + 15);
     y = drawTableHeader(doc, m, y, contentW, 'DETALLE DE COSTOS');
-    const costos = [
-        ['Lote doble encofrado', getNum('pro_lote')],
-        ['Servicio funerario estándar', getNum('pro_servicio')],
-        ['Total', total],
-        ['Descuento SIS (Deuda pend.)', getNum('pro_descuento')]
-    ];
     costos.forEach(function (item) {
-        y = drawRow(doc, m, y, contentW, item[0], item[1], item[0] === 'Total');
+        if (checkPage(rowH)) {
+            y = drawTableHeader(doc, m, y, contentW, 'DETALLE DE COSTOS');
+        }
+        y = drawRow(doc, m, y, contentW, item[0], item[1], item[2]);
     });
     y += 2;
 
-    // --- Total con descuento e Inicial (cajas destacadas) ---
+    // --- Total con descuento e Inicial (cajas destacadas, altura reducida) ---
+    const boxRowH = 6;
+    checkPage(28);
     doc.setDrawColor(...verde);
     doc.setLineWidth(0.35);
     doc.setFillColor(248, 250, 248);
-    doc.rect(m, y, contentW, rowH + 4, 'FD');
+    doc.rect(m, y, contentW, boxRowH + 2, 'FD');
     doc.setFont(undefined, 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...verde);
-    doc.text('Total con descuento', m + pad, y + 6);
-    doc.text(String(neto) + ' S/', rightX - pad, y + 6, { align: 'right' });
+    doc.text('Total con descuento', m + pad, y + 5);
+    doc.text(String(neto) + ' S/', rightX - pad, y + 5, { align: 'right' });
     doc.setFont(undefined, 'normal');
     doc.setTextColor(...texto);
-    y += rowH + 6;
+    y += boxRowH + 4;
 
     doc.setDrawColor(...verde);
     doc.setLineWidth(0.35);
-    doc.rect(m, y, contentW, rowH + 2, 'S');
+    doc.rect(m, y, contentW, boxRowH + 2, 'S');
     doc.setFont(undefined, 'bold');
-    doc.text('Inicial', m + pad, y + 5.5);
-    doc.text(String(getNum('pro_inicial')) + ' S/', rightX - pad, y + 5.5, { align: 'right' });
+    doc.text('Inicial', m + pad, y + 5);
+    doc.text(String(getNum('pro_inicial')) + ' S/', rightX - pad, y + 5, { align: 'right' });
     doc.setFont(undefined, 'normal');
-    y += rowH + 6;
+    y += boxRowH + 4;
 
     // --- Tabla: Saldo (título + tabla en un solo bloque, bordes cerrados) ---
     const saldoRows = [];
@@ -457,6 +845,7 @@ function generarPDFBlob() {
     const saldoDataH = saldoRows.length * rowH;
     const saldoTotalH = rowH;
     const saldoBlockH = saldoTitleH + saldoHeaderH + saldoDataH + saldoTotalH;
+    checkPage(saldoBlockH + 5);
     const saldoTopY = y;
     doc.setDrawColor(...verde);
     doc.setLineWidth(0.35);
@@ -520,6 +909,7 @@ function generarPDFBlob() {
 
     // --- Tabla: Términos (título y 2 columnas en un solo bloque, sin hueco) ---
     y += 3;
+    checkPage(85);
     const termTopY = y;
     const termRowH = 8;
     const termH = termRowH * 3;
@@ -568,9 +958,42 @@ function generarPDFBlob() {
         doc.text(t[0], xLeft - w0 / 2, textY);
         doc.text(t[1], xRight - w1 / 2, textY);
     });
+    const nivelRowsDom = [];
+    const nivelRowsEl = document.querySelectorAll('#term-nivel-rows .term-nivel-row');
+    nivelRowsEl.forEach(function (row) {
+        const labelEl = row.querySelector('.term-nivel-label');
+        const sel = row.querySelector('.term-nivel-select');
+        if (labelEl && sel) nivelRowsDom.push([(labelEl.textContent || '').trim(), sel.value || 'PAGA']);
+    });
+    const nivelRows = nivelRowsDom;
+    const nivelRowH = 5;
+    const nivelH = nivelRows.length * nivelRowH;
+    let nivelY = termTopY + termTotalH + 3;
+    if (nivelRows.length > 0) {
+        doc.setDrawColor(...verde);
+        doc.setLineWidth(0.35);
+        doc.rect(m, nivelY, contentW, nivelH, 'S');
+        doc.line(m + contentW / 2, nivelY, m + contentW / 2, nivelY + nivelH);
+        for (let i = 1; i < nivelRows.length; i++) {
+            doc.line(m, nivelY + i * nivelRowH, m + contentW, nivelY + i * nivelRowH);
+    }
+    doc.setFontSize(8);
+        doc.setTextColor(...verde);
+        doc.setFont(undefined, 'bold');
+        nivelRows.forEach(function (row, i) {
+            const yy = nivelY + (i + 0.5) * nivelRowH + 1.5;
+            doc.text(row[0], m + contentW / 4, yy, { align: 'center' });
+            doc.text(row[1], m + (contentW * 3) / 4, yy, { align: 'center' });
+        });
+    doc.setFont(undefined, 'normal');
+        doc.setTextColor(...texto);
+        nivelY += nivelH;
+    } else {
+        nivelY -= 3;
+    }
     doc.setFontSize(7);
     doc.setTextColor(120, 120, 120);
-    doc.text('se paga cuando se usa el espacio', m + pad, y + termTotalH + 4);
+    doc.text('SE PAGA CUANDO SE USA EL ESPACIO', m, nivelY + 4);
     doc.setTextColor(...texto);
     doc.setDrawColor(...verde);
     doc.setLineWidth(0.35);
@@ -578,11 +1001,16 @@ function generarPDFBlob() {
     doc.line(m, termTopY + termTotalH, m + contentW, termTopY + termTotalH);
     doc.line(m + borderHalf, termTopY, m + borderHalf, termTopY + termTotalH);
     doc.line(m + contentW, termTopY, m + contentW, termTopY + termTotalH);
-    y += termTotalH + 8;
+    y = nivelY + 9;
 
-    // --- Contacto ---
-    y = drawBoxTitle(doc, m, y, contentW, 'CONTACTO');
-    const contactoH = rowH * 2 + 4;
+    // --- Contacto: solo el título "CONTACTO" con borde un poco a la derecha; el cuadro de abajo (Asesora, Teléfono) igual que los demás ---
+    checkPage(45);
+    const contactoTitleOffset = 0.18;
+    const contactoTitleX = m + contactoTitleOffset;
+    const contactoTitleW = contentW - contactoTitleOffset;
+    y = drawBoxTitle(doc, contactoTitleX, y, contactoTitleW, 'CONTACTO');
+    y += 0.1;
+    const contactoH = rowH * 2;
     doc.setDrawColor(...verde);
     doc.setLineWidth(0.35);
     doc.line(m, y, m + contentW, y);
@@ -590,9 +1018,19 @@ function generarPDFBlob() {
     doc.line(m + borderHalf, y, m + borderHalf, y + contactoH);
     doc.line(m + contentW, y, m + contentW, y + contactoH);
     doc.setFontSize(9);
-    doc.text('Asesora comercial: ' + getStr('pro_asesora'), m + pad, y + 6);
-    doc.text('Teléfono: ' + getStr('pro_telefono'), m + pad, y + 6 + rowH);
+    doc.text('Asesora comercial: ' + getStr('pro_asesora'), m + pad, y + 5);
+    doc.text('Teléfono: ' + getStr('pro_telefono'), m + pad, y + 5 + rowH);
     doc.setFont(undefined, 'normal');
+    y += contactoH + 5;
+    doc.setFontSize(6);
+    doc.setTextColor(...verde);
+    doc.text('Para sepultura:', m, y);
+    doc.text('Oficina: Jr. Pablo de Olavide N° 169-Urb Rázuri', rightX, y, { align: 'right' });
+    y += 4;
+    doc.text('Teléf. 044-612910/044612911 - Trujillo', rightX, y, { align: 'right' });
+    doc.text('-Precio de protección sujeto a la carencia de 30 días.', m, y);
+    y += 4;
+    doc.setTextColor(...texto);
 
     return Promise.resolve(doc.output('blob'));
 }
@@ -639,7 +1077,11 @@ function abrirSweetAlertOpciones() {
     }).then(result => {
         if (result.isDismissed && result.dismiss === 'cancel') {
             limpiarForm();
-            Swal.fire({ title: 'Listo', text: 'Formulario limpiado.', icon: 'success', confirmButtonColor: VERDE });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Listo', text: 'Formulario limpiado. Se recargará la página.', icon: 'success', confirmButtonColor: VERDE }).then(() => { location.reload(); });
+            } else {
+                location.reload();
+            }
             return;
         }
         if (result.isConfirmed) {
@@ -692,7 +1134,7 @@ function enviarAWhatsApp() {
                         confirmButtonColor: VERDE
                     });
                 }
-            } else {
+        } else {
                 abrirEnlaceWa(shareData.text);
             }
         });
@@ -717,7 +1159,27 @@ if ('serviceWorker' in navigator) {
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarProforma();
+    actualizarVisibilidadNivelBox();
     updateDisplays();
+    actualizarVisibilidadRestaurarFilas();
+
+    // Número celular: solo 9 dígitos, debe comenzar por 9
+    const inputCelular = document.getElementById('pro_celular');
+    if (inputCelular) {
+        inputCelular.addEventListener('input', function () {
+            let val = (this.value || '').replace(/\D/g, '');
+            if (val.length > 9) val = val.slice(0, 9);
+            if (val.length > 0 && val.charAt(0) !== '9') val = '9' + val.slice(0, 8);
+            if (this.value !== val) this.value = val;
+        });
+        inputCelular.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 9);
+            if (pasted.length > 0 && pasted.charAt(0) !== '9') this.value = '9' + pasted.slice(0, 8);
+            else this.value = pasted;
+        });
+    }
+
     const container = document.getElementById('proforma-content');
     let saveTimeout;
     function guardarConRetraso() {
@@ -739,6 +1201,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => abrirSweetAlertOpciones());
     }
 
+    const btnRestoreRows = document.getElementById('btn-restore-cost-rows');
+    if (btnRestoreRows) {
+        btnRestoreRows.addEventListener('click', restauraFilasEliminadas);
+    }
+    const btnAddCostRow = document.getElementById('btn-add-cost-row');
+    if (btnAddCostRow) {
+        btnAddCostRow.addEventListener('click', function () {
+            agregarFilaCosto(getNextExtraCostId(), 'Texto / Valor', '');
+        });
+    }
+
     const btnAddCelda = document.getElementById('btn-add-celda');
     if (btnAddCelda) {
         btnAddCelda.addEventListener('click', agregarCeldaCuota480);
@@ -751,6 +1224,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const proformaContent = document.getElementById('proforma-content');
     if (proformaContent) {
         proformaContent.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-add-nivel')) {
+                agregarNivelRow();
+                return;
+            }
+            const btnDeleteNivel = e.target.closest('.btn-delete-nivel');
+            if (btnDeleteNivel) {
+                const row = btnDeleteNivel.closest('.term-nivel-row');
+                if (row) {
+                    row.remove();
+                    renumerarNivelRows();
+                    actualizarVisibilidadNivelBox();
+                    guardarProforma();
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+                }
+                return;
+            }
+            const btnEdit = e.target.closest('.btn-edit-row');
+            if (btnEdit && btnEdit.dataset.row) {
+                abrirEditarFila(btnEdit.dataset.row);
+                return;
+            }
+            const btnDeleteCost = e.target.closest('.btn-delete-cost-row');
+            if (btnDeleteCost && btnDeleteCost.dataset.row) {
+                const rowId = btnDeleteCost.dataset.row;
+                if (rowId === 'pro_total') return;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: '¿Eliminar esta fila?',
+                        text: 'Se quitará del detalle y el valor se tratará como 0.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Eliminar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#c62828',
+                        cancelButtonColor: '#888'
+                    }).then(function(res) {
+                        if (res.isConfirmed) {
+                            const row = document.querySelector('.proforma-grid-row[data-row-id="' + rowId + '"]');
+                            if (row) row.remove();
+                            updateDisplays();
+                            guardarProforma();
+                            actualizarVisibilidadRestaurarFilas();
+                            if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+                        }
+                    });
+                } else {
+                    const row = document.querySelector('.proforma-grid-row[data-row-id="' + rowId + '"]');
+                    if (row && confirm('¿Eliminar esta fila?')) { row.remove(); updateDisplays(); guardarProforma(); }
+                }
+                return;
+            }
             const btn = e.target.closest('.btn-delete-cuota-row');
             if (!btn) return;
             const row = btn.closest('.cuota-item');

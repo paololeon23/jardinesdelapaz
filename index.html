@@ -28,38 +28,68 @@
         <main class="proforma-wrap">
             <div id="proforma-content" class="proforma-content">
                 <div class="proforma-document">
-                    <h2 class="proforma-title">PROFORMA</h2>
+                    <div class="proforma-title-row">
+                        <h2 class="proforma-title">PROFORMA :</h2>
+                        <input type="number" id="pro_codigo" name="pro_codigo" class="proforma-codigo-input" placeholder="Código" min="0" step="1" inputmode="numeric" pattern="[0-9]*" aria-label="Código de proforma">
+                    </div>
+
+                    <div class="proforma-box proforma-box-datos">
+                        <div class="proforma-box-datos-row">
+                            <span class="box-label">Datos:</span>
+                            <input type="text" id="pro_datos" name="pro_datos" class="box-value-input box-input-text" placeholder="Nombre o datos del cliente" aria-label="Datos">
+                        </div>
+                        <div class="proforma-box-datos-row">
+                            <span class="box-label">Número celular:</span>
+                            <input type="tel" id="pro_celular" name="pro_celular" class="box-value-input box-input-text" placeholder="9 dígitos (ej. 987654321)" maxlength="9" inputmode="numeric" pattern="9[0-9]{8}" autocomplete="tel" aria-label="Número celular (9 dígitos, empieza en 9)">
+                        </div>
+                        <div class="proforma-box-datos-row">
+                            <span class="box-label">Dirección:</span>
+                            <input type="text" id="pro_direccion" name="pro_direccion" class="box-value-input box-input-text" placeholder="Dirección" aria-label="Dirección">
+                        </div>
+                    </div>
+                    <hr class="proforma-datos-linea" aria-hidden="true">
 
                     <div class="proforma-grid">
-                        <div class="proforma-grid-row proforma-row-inline">
-                            <label for="pro_lote" class="proforma-label">Lote doble encofrado</label>
+                        <div class="proforma-grid-row proforma-row-inline" data-row-id="pro_lote">
+                            <label for="pro_lote" id="label_pro_lote" class="proforma-label">Lote doble encofrado</label>
+                            <button type="button" class="btn-edit-row" data-row="pro_lote" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>
                             <span class="proforma-arrow" aria-hidden="true">-----></span>
                             <div class="proforma-value-box">
                                 <input type="number" id="pro_lote" name="pro_lote" value="8570" min="0" step="1" aria-label="Monto lote doble encofrado">
                             </div>
+                            <button type="button" class="btn-delete-cost-row" data-row="pro_lote" title="Eliminar" aria-label="Eliminar fila"><i data-lucide="trash-2"></i></button>
                         </div>
-                        <div class="proforma-grid-row proforma-row-inline">
-                            <label for="pro_servicio" class="proforma-label">Servicio funerario estándar</label>
+                        <div class="proforma-grid-row proforma-row-inline" data-row-id="pro_servicio">
+                            <label for="pro_servicio" id="label_pro_servicio" class="proforma-label">Servicio funerario estándar</label>
+                            <button type="button" class="btn-edit-row" data-row="pro_servicio" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>
                             <span class="proforma-arrow" aria-hidden="true">-----></span>
                             <div class="proforma-value-box">
                                 <input type="number" id="pro_servicio" name="pro_servicio" value="2148" min="0" step="1" aria-label="Monto servicio funerario">
                             </div>
+                            <button type="button" class="btn-delete-cost-row" data-row="pro_servicio" title="Eliminar" aria-label="Eliminar fila"><i data-lucide="trash-2"></i></button>
                         </div>
-                        <div class="proforma-grid-row proforma-row-inline proforma-total-row">
-                            <span class="proforma-label proforma-label-bold">Total</span>
+                        <div class="proforma-grid-row proforma-row-inline proforma-total-row" data-row-id="pro_total">
+                            <span id="label_pro_total" class="proforma-label proforma-label-bold">Total</span>
+                            <button type="button" class="btn-edit-row" data-row="pro_total" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>
                             <span class="proforma-arrow" aria-hidden="true">-----></span>
                             <div class="proforma-value-box">
                                 <span id="pro_total_display" class="value-display">10718</span>
                             </div>
+                            <button type="button" id="btn-add-cost-row" class="btn-add-cost-row" title="Añadir fila" aria-label="Añadir fila"><i data-lucide="plus"></i></button>
                         </div>
-                        <div class="proforma-grid-row proforma-row-inline">
-                            <label for="pro_descuento" class="proforma-label">Descuento SIS (Deuda pend.)</label>
+                        <div class="proforma-grid-row proforma-row-inline" data-row-id="pro_descuento">
+                            <label for="pro_descuento" id="label_pro_descuento" class="proforma-label">Descuento SIS (Deuda pend.)</label>
+                            <button type="button" class="btn-edit-row" data-row="pro_descuento" title="Editar" aria-label="Editar fila"><i data-lucide="pencil"></i></button>
                             <span class="proforma-arrow" aria-hidden="true">-----></span>
                             <div class="proforma-value-box">
                                 <input type="number" id="pro_descuento" name="pro_descuento" value="-1000" step="1" aria-label="Descuento SIS">
                             </div>
+                            <button type="button" class="btn-delete-cost-row" data-row="pro_descuento" title="Eliminar" aria-label="Eliminar fila"><i data-lucide="trash-2"></i></button>
                         </div>
                     </div>
+                    <p class="restore-rows-wrap restore-add-rows-wrap" id="wrap-restore-add-buttons">
+                        <span id="restore-rows-wrap" style="display:none"><button type="button" id="btn-restore-cost-rows" class="btn-restore-rows">Restaurar filas eliminadas</button></span>
+                    </p>
 
                     <div class="proforma-box proforma-box-total">
                         <span class="box-label">Total con descuento</span>
@@ -123,12 +153,20 @@
                             <input type="number" id="pro_reintegro" value="1400" min="0" class="box-value box-value-input term-input-col" aria-label="Reintegro">
                             <span class="term-unit">Soles</span>
                         </div>
-                        <div class="term-row term-row-box">
-                            <span class="box-label">CUA:</span>
+                        <div class="term-row term-row-box term-row-cua">
+                            <span class="term-cua-label-wrap">
+                                <span class="box-label">CUA:</span>
+                                <button type="button" class="btn-add-nivel" id="btn-add-nivel" title="Añadir nivel" aria-label="Añadir nivel"><span>+</span></button>
+                            </span>
                             <input type="number" id="pro_cua" value="600" min="0" class="box-value box-value-input term-input-col" aria-label="CUA">
                             <span class="term-unit">Soles</span>
                         </div>
-                        <p class="term-note">se paga cuando se usa el espacio</p>
+                        <div class="term-nivel-wrapper" id="term-nivel-wrapper">
+                            <div class="term-nivel-box" id="term-nivel-box" style="display: none;">
+                                <div id="term-nivel-rows" class="term-nivel-rows"></div>
+                            </div>
+                        </div>
+                        <p class="term-note">SE PAGA CUANDO SE USA EL ESPACIO</p>
                     </div>
 
                     <div class="proforma-box proforma-box-asesora">
