@@ -716,7 +716,7 @@ function generarPDFBlob() {
         return y + rowH + 2;
     }
 
-    // --- Cabecera: PARQUE ETERNO (izq) y JARDINES DE LA PAZ (der), pegados al borde dorado ---
+    // --- Cabecera: PARQUE ETERNO (izq) y JARDINES DE LA PAZ (der), línea dorada ---
     y += 2;
     doc.setFontSize(8);
     doc.setFont(undefined, 'bold');
@@ -727,7 +727,21 @@ function generarPDFBlob() {
     doc.setDrawColor(...dorado);
     doc.setLineWidth(0.35);
     doc.line(m, y, rightX, y);
-    y += 11;
+    y += 1.5;
+    doc.setFontSize(6);
+    doc.setFont(undefined, 'normal');
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const h = now.getHours();
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const sec = String(now.getSeconds()).padStart(2, '0');
+    const ampm = h >= 12 ? 'P.M' : 'A.M';
+    const h12 = h % 12 || 12;
+    const fechaHoraStr = 'fecha: ' + dd + '/' + mm + '/' + yyyy + '  Hora: ' + h12 + ':' + min + ':' + sec + ' ' + ampm;
+    doc.text(fechaHoraStr, rightX, y + 1.5, { align: 'right' });
+    y += 8;
     doc.setTextColor(...verde);
     doc.setFontSize(15);
     doc.setFont(undefined, 'bold');
