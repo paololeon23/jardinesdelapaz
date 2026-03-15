@@ -666,17 +666,14 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
-    text-align: center;
     box-sizing: border-box;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-.proforma-box-terms .btn-add-nivel span {
-    display: block;
-    line-height: 1;
-    transform: translateY(-1px);
+.proforma-box-terms .btn-add-nivel svg,
+.proforma-box-terms .btn-add-nivel .lucide {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
 }
 .proforma-box-terms .btn-add-nivel:hover,
 .proforma-box-terms .btn-add-nivel:focus,
