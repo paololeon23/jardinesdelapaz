@@ -754,8 +754,8 @@ function generarPDFBlob() {
     y += 5;
 
     // --- Datos / Celular / Dirección (antes de Detalle de costos) ---
-    const datosLabel = ['Datos:', 'Número celular:', 'Dirección:'];
-    const datosIds = ['pro_datos', 'pro_celular', 'pro_direccion'];
+    const datosLabel = ['Datos:', 'Dirección:', 'Número celular:'];
+    const datosIds = ['pro_datos', 'pro_direccion', 'pro_celular'];
     const datosRowH = 7;
     const datosH = datosRowH * 3 + 2;
     checkPage(datosH + 10);
