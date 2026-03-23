@@ -8,6 +8,7 @@ import { updateUI } from './network.js';
 const VERDE = '#1a4731';
 const DORADO = '#a6894a';
 const STORAGE_KEY = 'jardines_de_la_paz_proforma';
+const STORAGE_KEY_CARTA = 'jardines_carta_compromiso_sis';
 
 const DEFAULT_LABELS = {
     pro_lote: 'Lote doble encofrado',
@@ -59,6 +60,102 @@ function getSumaCeldas() {
         sum += isNaN(v) ? 0 : v;
     });
     return Math.round(sum);
+}
+
+function setHeaderJdpHeight() {
+    const el = document.querySelector('.header-jdp');
+    if (el && el.offsetHeight) {
+        document.documentElement.style.setProperty('--header-jdp-h', el.offsetHeight + 'px');
+    }
+}
+
+function initSidebarNavigation() {
+    const navButtons = document.querySelectorAll('.sidebar-link[data-view-target]');
+    const views = document.querySelectorAll('.app-view');
+    const sidebar = document.getElementById('sidebar-jdp');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const toggleBtn = document.getElementById('btn-sidebar-toggle');
+    if (!navButtons.length || !views.length) return;
+
+    function closeDrawer() {
+        if (!sidebar || !backdrop) return;
+        sidebar.classList.remove('is-open');
+        backdrop.classList.remove('is-visible');
+        backdrop.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sidebar-drawer-open');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.setAttribute('aria-label', 'Abrir menú de navegación');
+        }
+    }
+
+    function openDrawer() {
+        if (!sidebar || !backdrop) return;
+        setHeaderJdpHeight();
+        sidebar.classList.add('is-open');
+        backdrop.classList.add('is-visible');
+        backdrop.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sidebar-drawer-open');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'true');
+            toggleBtn.setAttribute('aria-label', 'Cerrar menú de navegación');
+        }
+    }
+
+    function toggleDrawer() {
+        if (sidebar && sidebar.classList.contains('is-open')) closeDrawer();
+        else openDrawer();
+    }
+
+    function activateView(targetId) {
+        views.forEach(function (view) {
+            const active = view.id === targetId;
+            view.hidden = !active;
+            view.classList.toggle('is-active', active);
+        });
+        navButtons.forEach(function (btn) {
+            const active = btn.getAttribute('data-view-target') === targetId;
+            btn.classList.toggle('is-active', active);
+            if (active) btn.setAttribute('aria-current', 'page');
+            else btn.removeAttribute('aria-current');
+        });
+        closeDrawer();
+    }
+
+    navButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = btn.getAttribute('data-view-target');
+            if (!target) return;
+            activateView(target);
+        });
+    });
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+            if (sidebar && sidebar.classList.contains('is-open')) closeDrawer();
+            else openDrawer();
+        });
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeDrawer);
+    }
+    const closeBtn = document.getElementById('btn-sidebar-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            closeDrawer();
+        });
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeDrawer();
+    });
+    window.addEventListener('resize', function () {
+        setHeaderJdpHeight();
+        if (window.innerWidth > 900) closeDrawer();
+    });
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 }
 
 function updateDisplays() {
@@ -1049,6 +1146,360 @@ function generarPDFBlob() {
     return Promise.resolve(doc.output('blob'));
 }
 
+function getCartaStr(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+}
+
+/** Convierte segmentos {text, bold} en tokens (palabras y espacios) para PDF mixto */
+function cartaSegmentsToTokens(segments) {
+    const tokens = [];
+    segments.forEach(function (seg) {
+        const s = String(seg.text);
+        const re = /(\S+|\s+)/g;
+        let m;
+        while ((m = re.exec(s)) !== null) {
+            tokens.push({ text: m[1], bold: seg.bold });
+        }
+    });
+    return tokens;
+}
+
+function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn) {
+    let y = startY;
+    let line = [];
+    let lineW = 0;
+    function flushLine() {
+        if (!line.length) return;
+        ensureSpaceFn(lineH);
+        let xPos = x;
+        line.forEach(function (tok) {
+            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+            doc.setFontSize(11);
+            doc.text(tok.text, xPos, y);
+            xPos += doc.getTextWidth(tok.text);
+        });
+        y += lineH;
+        line = [];
+        lineW = 0;
+    }
+    tokens.forEach(function (tok) {
+        doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+        doc.setFontSize(11);
+        const tw = doc.getTextWidth(tok.text);
+        if (tw > w) {
+            flushLine();
+            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+            doc.setFontSize(11);
+            const subLines = doc.splitTextToSize(tok.text, w);
+            subLines.forEach(function (sub) {
+                ensureSpaceFn(lineH);
+                doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+                doc.setFontSize(11);
+                doc.text(sub, x, y);
+                y += lineH;
+            });
+            return;
+        }
+        if (lineW + tw > w && line.length > 0) {
+            flushLine();
+        }
+        line.push(tok);
+        lineW += tw;
+    });
+    flushLine();
+    return y;
+}
+
+/** PDF Carta de Compromiso - SIS — maquetación tipo carta formal (plantilla física) */
+function generarCartaPDFBlob() {
+    const JsPDF = window.jspdf && window.jspdf.jsPDF;
+    if (!JsPDF) return Promise.resolve(null);
+    const doc = new JsPDF('p', 'mm', 'a4');
+    const m = 25;
+    const pageW = 210;
+    const contentW = pageW - 2 * m;
+    const pageH = 297;
+    const bottomSafe = 24;
+    const lineH = 5.3;
+    /** Párrafo "Yo, …" — un poco más aire que el cuerpo, pero más compacto */
+    const lineHParrafoYo = 7;
+    const paraGap = 4.5;
+    let y = 18;
+
+    const dia = getCartaStr('carta_dia') || '....';
+    const mesRaw = getCartaStr('carta_mes') || '...............................';
+    const mes = String(mesRaw).toUpperCase();
+    const anioFull = String(new Date().getFullYear());
+
+    const nombreVal = getCartaStr('carta_nombre');
+    const dniVal = getCartaStr('carta_dni');
+    const dirVal = getCartaStr('carta_direccion');
+    const telVal = getCartaStr('carta_telefono');
+    const servVal = getCartaStr('carta_servicio');
+    const contratoVal = getCartaStr('carta_contrato');
+
+    const nombreDisplay = nombreVal || '....................................................................................................';
+    const dniDisplay = dniVal || '....................................';
+    const direccionDisplay = dirVal || '..................................................... ...........................................................................';
+    const telDisplay = telVal || '............................';
+    const servicioDisplay = servVal || '.................................';
+    const contratoDisplay = contratoVal || '..............................';
+
+    function newPage() {
+        doc.addPage('p', 'mm', 'a4');
+        y = 25;
+    }
+
+    function ensureSpace(mm) {
+        if (y + mm > pageH - bottomSafe) newPage();
+    }
+
+    function writeParagraph(text) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, contentW);
+        ensureSpace(lines.length * lineH + 2);
+        doc.text(text, m, y, { maxWidth: contentW, align: 'justify' });
+        y += lines.length * lineH;
+    }
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('CARTA DE COMPROMISO - SIS', pageW / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    const fechaLine = 'TRUJILLO, ' + dia + ' DE ' + mes + ', ' + anioFull;
+    doc.text(fechaLine, pageW - m, y, { align: 'right' });
+    y += 9;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('SEÑORES:', m, y);
+    y += lineH + 1;
+    doc.text('PARQUE DEL NORTE S.A', m, y);
+    y += 8.5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    const p1Segments = [
+        { text: 'Yo, ', bold: false },
+        { text: nombreDisplay, bold: !!nombreVal },
+        { text: ', identificado(a) con DNI N.º ', bold: false },
+        { text: dniDisplay, bold: !!dniVal },
+        { text: ', domiciliado(a) en ', bold: false },
+        { text: direccionDisplay, bold: !!dirVal },
+        { text: ', con número de teléfono ', bold: false },
+        { text: telDisplay, bold: !!telVal },
+        { text: ', he adquirido un servicio funerario ', bold: false },
+        { text: servicioDisplay, bold: !!servVal },
+        { text: ', según contrato N.º ', bold: false },
+        { text: contratoDisplay, bold: !!contratoVal },
+        { text: '.', bold: false }
+    ];
+    const p1Tokens = cartaSegmentsToTokens(p1Segments);
+    y = drawCartaMixedParagraph(doc, p1Tokens, m, y, contentW, lineHParrafoYo, ensureSpace);
+    y += paraGap;
+
+    const p2 = 'El cual me comprometo a cancelar la totalidad del monto que tenía como crédito a futuro de SIS.';
+    writeParagraph(p2);
+    y += paraGap;
+
+    const p3 = 'Por el monto de S/. 1,000 (MIL Y 00/100 soles) al momento que requiera el uso del servicio.';
+    writeParagraph(p3);
+    y += 9;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    ensureSpace(lineH + 3);
+    doc.text('Atentamente,', m, y);
+    y += lineH + 5;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('NOMBRE:', m, y);
+    doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
+    doc.setFontSize(11);
+    const footerNameLines = doc.splitTextToSize(nombreDisplay, contentW - 24);
+    doc.text(footerNameLines[0], m + 24, y);
+    y += lineH;
+    for (let fi = 1; fi < footerNameLines.length; fi++) {
+        ensureSpace(lineH);
+        doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
+        doc.text(footerNameLines[fi], m + 24, y);
+        y += lineH;
+    }
+    y += 2.5;
+    ensureSpace(lineH);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DNI:', m, y);
+    doc.setFont('helvetica', dniVal ? 'bold' : 'normal');
+    doc.text(dniDisplay, m + 16, y);
+
+    return Promise.resolve(doc.output('blob'));
+}
+
+function guardarCarta() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const ids = ['carta_dia', 'carta_mes', 'carta_nombre', 'carta_dni', 'carta_direccion', 'carta_telefono', 'carta_servicio', 'carta_contrato'];
+        const data = {};
+        ids.forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el && 'value' in el) data[id] = el.value;
+        });
+        localStorage.setItem(STORAGE_KEY_CARTA, JSON.stringify(data));
+    } catch (e) {}
+}
+
+function cargarCarta() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_CARTA);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object') return;
+        Object.keys(data).forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el && 'value' in el) el.value = data[id];
+        });
+        const mesEl = document.getElementById('carta_mes');
+        if (mesEl && mesEl.value) {
+            const v = String(mesEl.value).trim().toUpperCase();
+            if ([].some.call(mesEl.options, function (o) { return o.value === v; })) {
+                mesEl.value = v;
+            }
+        }
+    } catch (e) {}
+}
+
+/** Tras cargar datos guardados: nombre sin dígitos, teléfono 9 dígitos empezando en 9 */
+function normalizarCartaCampos() {
+    const cn = document.getElementById('carta_nombre');
+    if (cn && cn.value) cn.value = String(cn.value).replace(/[0-9]/g, '');
+    const ct = document.getElementById('carta_telefono');
+    if (ct && ct.value) {
+        let val = String(ct.value).replace(/\D/g, '').slice(0, 9);
+        if (val.length > 0 && val.charAt(0) !== '9') val = '9' + val.slice(0, 8);
+        ct.value = val;
+    }
+}
+
+/** Opciones 1–31 en el select de día (debe ejecutarse antes de cargarCarta). */
+function fillCartaDiasSelect() {
+    const sel = document.getElementById('carta_dia');
+    if (!sel || sel.tagName !== 'SELECT') return;
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = 'Día';
+    sel.appendChild(opt0);
+    for (let d = 1; d <= 31; d++) {
+        const o = document.createElement('option');
+        o.value = String(d);
+        o.textContent = String(d);
+        sel.appendChild(o);
+    }
+    if (prev && [].some.call(sel.options, function (opt) { return opt.value === prev; })) {
+        sel.value = prev;
+    }
+}
+
+/** Si no hay fecha guardada, usar la fecha actual. */
+function aplicarCartaFechaDefecto() {
+    const d = document.getElementById('carta_dia');
+    const m = document.getElementById('carta_mes');
+    if (!d || !m) return;
+    const now = new Date();
+    if (!d.value) {
+        d.value = String(now.getDate());
+    }
+    if (!m.value) {
+        const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        m.value = months[now.getMonth()];
+    }
+}
+
+function verCartaPDF() {
+    generarCartaPDFBlob().then(function (blob) {
+        if (!blob) {
+            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo generar el PDF.', icon: 'error', confirmButtonColor: VERDE });
+            else alert('No se pudo generar el PDF.');
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        window.open(url + '#zoom=page-width', '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    });
+}
+
+function enviarCartaWhatsApp() {
+    const shareData = { title: 'Carta de Compromiso SIS', text: 'Carta de Compromiso - SIS. Parque del Norte.' };
+    generarCartaPDFBlob().then(function (pdfBlob) {
+        if (!pdfBlob) {
+            abrirEnlaceWa(shareData.text);
+            return;
+        }
+        const f = new File([pdfBlob], 'Carta-Compromiso-SIS.pdf', { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+            navigator.share({ title: shareData.title, text: shareData.text, files: [f] }).then(function () {
+                if (typeof Swal !== 'undefined') Swal.fire({ title: 'Enviado', text: 'Compartido correctamente.', icon: 'success', confirmButtonColor: VERDE });
+            }).catch(function () {
+                abrirEnlaceWa(shareData.text);
+            });
+        } else {
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Carta-Compromiso-SIS.pdf';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+            abrirEnlaceWa(shareData.text);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Descarga lista',
+                    text: 'Se descargó el PDF. Abriendo WhatsApp para que puedas enviarlo.',
+                    icon: 'success',
+                    confirmButtonColor: VERDE
+                });
+            }
+        }
+    });
+}
+
+function abrirSweetAlertCarta() {
+    if (typeof Swal === 'undefined') {
+        verCartaPDF();
+        return;
+    }
+    Swal.fire({
+        title: 'Carta de compromiso',
+        html: 'Elige qué hacer con el PDF:',
+        icon: 'info',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Ver PDF',
+        denyButtonText: 'Compartir PDF',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: VERDE,
+        denyButtonColor: DORADO,
+        cancelButtonColor: '#666'
+    }).then(function (result) {
+        if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) return;
+        if (result.isConfirmed) {
+            verCartaPDF();
+            return;
+        }
+        if (result.isDenied) {
+            enviarCartaWhatsApp();
+        }
+    });
+}
+
 function generarImagenBlob() {
     if (typeof html2canvas === 'undefined') return Promise.resolve(null);
     const el = document.getElementById('proforma-content');
@@ -1172,7 +1623,13 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    setHeaderJdpHeight();
+    initSidebarNavigation();
     cargarProforma();
+    fillCartaDiasSelect();
+    cargarCarta();
+    normalizarCartaCampos();
+    aplicarCartaFechaDefecto();
     actualizarVisibilidadNivelBox();
     updateDisplays();
     actualizarVisibilidadRestaurarFilas();
@@ -1191,6 +1648,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 9);
             if (pasted.length > 0 && pasted.charAt(0) !== '9') this.value = '9' + pasted.slice(0, 8);
             else this.value = pasted;
+        });
+    }
+
+    const cartaNombre = document.getElementById('carta_nombre');
+    if (cartaNombre) {
+        cartaNombre.addEventListener('input', function () {
+            const cleaned = String(this.value || '').replace(/[0-9]/g, '');
+            if (this.value !== cleaned) this.value = cleaned;
+        });
+        cartaNombre.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const t = (e.clipboardData || window.clipboardData).getData('text').replace(/[0-9]/g, '');
+            this.value = t;
+        });
+    }
+
+    const cartaTel = document.getElementById('carta_telefono');
+    if (cartaTel) {
+        cartaTel.addEventListener('input', function () {
+            let val = (this.value || '').replace(/\D/g, '');
+            if (val.length > 9) val = val.slice(0, 9);
+            if (val.length > 0 && val.charAt(0) !== '9') val = '9' + val.slice(0, 8);
+            if (this.value !== val) this.value = val;
+        });
+        cartaTel.addEventListener('paste', function (e) {
+            e.preventDefault();
+            let pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 9);
+            if (pasted.length > 0 && pasted.charAt(0) !== '9') pasted = '9' + pasted.slice(0, 8);
+            this.value = pasted;
         });
     }
 
@@ -1214,6 +1700,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) {
         btn.addEventListener('click', () => abrirSweetAlertOpciones());
     }
+
+    const cartaRoot = document.getElementById('carta-form-root');
+    let cartaSaveTimeout;
+    function guardarCartaConRetraso() {
+        clearTimeout(cartaSaveTimeout);
+        cartaSaveTimeout = setTimeout(guardarCarta, 200);
+    }
+    if (cartaRoot) {
+        cartaRoot.addEventListener('input', function () {
+            guardarCartaConRetraso();
+        });
+        cartaRoot.addEventListener('change', function () {
+            guardarCarta();
+        });
+    }
+    const btnCartaGenerar = document.getElementById('btn-carta-generar');
+    if (btnCartaGenerar) {
+        btnCartaGenerar.addEventListener('click', function () {
+            abrirSweetAlertCarta();
+        });
+    }
+    const viewCartaEl = document.getElementById('view-carta');
+    if (viewCartaEl && window.lucide && typeof window.lucide.createIcons === 'function') {
+        const obsLucideCarta = new MutationObserver(function () {
+            if (!viewCartaEl.hasAttribute('hidden')) {
+                window.lucide.createIcons();
+            }
+        });
+        obsLucideCarta.observe(viewCartaEl, { attributes: true, attributeFilter: ['hidden'] });
+    }
+    window.addEventListener('beforeunload', guardarCarta);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') guardarCarta();
+    });
 
     const btnRestoreRows = document.getElementById('btn-restore-cost-rows');
     if (btnRestoreRows) {
