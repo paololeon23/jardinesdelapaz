@@ -1165,11 +1165,13 @@ function cartaSegmentsToTokens(segments) {
     return tokens;
 }
 
-function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn, forceAllJustify) {
+function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn, justifyLastLine) {
     let y = startY;
     let line = [];
     let lineW = 0;
     const lines = [];
+    /* Margen interno derecho: el justificado manual + getTextWidth a veces dejan la última letra fuera del área */
+    const wSafe = Math.max(20, w - 1.2);
 
     function pushLine() {
         if (!line.length) return;
@@ -1182,15 +1184,15 @@ function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn
         doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
         doc.setFontSize(11);
         const tw = doc.getTextWidth(tok.text);
-        if (tw > w) {
+        if (tw > wSafe) {
             pushLine();
-            const subLines = doc.splitTextToSize(tok.text, w);
+            const subLines = doc.splitTextToSize(tok.text, wSafe);
             subLines.forEach(function (sub) {
                 lines.push([{ text: sub, bold: tok.bold }]);
             });
             return;
         }
-        if (lineW + tw > w && line.length > 0) {
+        if (lineW + tw > wSafe && line.length > 0) {
             pushLine();
         }
         line.push(tok);
@@ -1209,8 +1211,14 @@ function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn
             rawW += doc.getTextWidth(tok.text);
             if (/^\s+$/.test(tok.text)) spacesCount++;
         });
-        const shouldJustifyThisLine = (forceAllJustify === true) ? true : !isLastLine;
-        const extraPerSpace = (shouldJustifyThisLine && spacesCount > 0 && rawW < w) ? ((w - rawW) / spacesCount) : 0;
+        /* Última línea natural salvo justifyLastLine (p. ej. bloque antes de un salto \n forzado) */
+        const shouldJustifyThisLine = !isLastLine || justifyLastLine === true;
+        /* Reparto hasta wSafe; tope suave para no abrir demasiado los espacios (p. ej. «De igual forma…»). */
+        let extraPerSpace = (shouldJustifyThisLine && spacesCount > 0 && rawW < wSafe) ? ((wSafe - rawW) / spacesCount) : 0;
+        const maxExtraPerSpaceMm = 2.35;
+        if (extraPerSpace > maxExtraPerSpaceMm) {
+            extraPerSpace = maxExtraPerSpaceMm;
+        }
 
         let xPos = x;
         lineTokens.forEach(function (tok) {
@@ -1608,14 +1616,14 @@ function generarCartaPDFBlob() {
     doc.setFontSize(11);
     const footerNameLines = doc.splitTextToSize(nombreDisplay, contentW - 24);
     doc.text(footerNameLines[0], m + 24, y);
-    y += lineH * 0.02;
+    y += lineH;
     for (let fi = 1; fi < footerNameLines.length; fi++) {
         ensureSpace(lineH);
         doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
         doc.text(footerNameLines[fi], m + 24, y);
         y += lineH;
     }
-    y += 2.5;
+    y += 1.5;
     ensureSpace(lineH);
     doc.setFont('helvetica', 'bold');
     doc.text('DNI:', m, y);
@@ -1779,14 +1787,15 @@ function generarCartaEssaludPDFBlob() {
     if (!JsPDF) return Promise.resolve(null);
     const doc = new JsPDF('p', 'mm', 'a4');
     const m = 25;
-    const marginRight = 23;
+    const marginRight = 26;
     const pageW = 210;
     const contentW = pageW - m - marginRight;
     const pageH = 297;
-    const bottomSafe = 24;
+    const bottomSafe = 20.5;
     const lineH = 8.5;
-    /* Primer párrafo ESSALUD sin interlineado extra */
-    const lineHParrafo = 5.4;
+    const lineHParrafo = 5.3;
+    const lineHParrafoPrimero = 5.6;
+    const lineHLista = 7.95;
     const paraGap = 0;
     let y = 24;
 
@@ -1828,38 +1837,20 @@ function generarCartaEssaludPDFBlob() {
         });
     }
 
-    /** Justificado manual (word-like): última línea queda a la izquierda */
-    function writeParagraphAllJustify(text, customLineH) {
-        const lh = customLineH || lineH;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(11);
-        const lines = doc.splitTextToSize(text, contentW);
-        ensureSpace(lines.length * lh + 2);
-        lines.forEach(function (line, lineIdx) {
-            const parts = String(line).trim().split(/\s+/).filter(Boolean);
-            const isLastLine = lineIdx === lines.length - 1;
-            if (parts.length <= 1 || isLastLine) {
-                doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
-                y += lh;
-                return;
-            }
-            const wordsW = parts.reduce(function (sum, w) {
-                return sum + doc.getTextWidth(w);
-            }, 0);
-            const gaps = parts.length - 1;
-            const gapW = (contentW - wordsW) / gaps;
-            let xPos = m;
-            parts.forEach(function (w, wi) {
-                doc.text(w, xPos, y);
-                xPos += doc.getTextWidth(w);
-                if (wi < parts.length - 1) xPos += gapW;
-            });
-            y += lh;
+    /** Texto normal con saltos \n: mismo motor que «Yo,…» (drawCartaMixedParagraph) */
+    function drawPlainParagraphWithHardBreaks(text) {
+        const parts = String(text).split(/\n+/);
+        parts.forEach(function (part, pi) {
+            const t = part.trim();
+            if (!t) return;
+            const tok = cartaSegmentsToTokens([{ text: t, bold: false }]);
+            const isLastPart = pi === parts.length - 1;
+            y = drawCartaMixedParagraph(doc, tok, m, y, contentW, lineHParrafo, ensureSpace, !isLastPart);
         });
     }
 
     function writeParagraphIndented(text, indentMm) {
-        const lh = lineH;
+        const lh = lineHLista;
         const indent = indentMm || 0;
         const maxW = contentW - indent;
         doc.setFont('helvetica', 'normal');
@@ -1876,7 +1867,7 @@ function generarCartaEssaludPDFBlob() {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('CARTA DE COMPROMISO', pageW / 2, y, { align: 'center' });
-    y += 13;
+    y += 12;
 
     doc.setFontSize(11);
     const fechaPrefix = 'TRUJILLO, ';
@@ -1915,18 +1906,18 @@ function generarCartaEssaludPDFBlob() {
     xRun += wComma;
     doc.setFont('helvetica', 'bold');
     doc.text(fechaAnio, xRun, y);
-    y += 12;
+    y += 11;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.text('Señores,', m, y);
-    y += lineH + 3.6;
+    y += lineH + 3.2;
     doc.setFont('helvetica', 'bold');
     doc.text('PARQUE DEL NORTE S.A.', m, y);
     y += lineH;
     doc.setFont('helvetica', 'normal');
     doc.text('Presente.', m, y);
-    y += 8.5;
+    y += 7.65;
 
     const p1Segments = [
         { text: 'Yo, ', bold: false },
@@ -1942,12 +1933,12 @@ function generarCartaEssaludPDFBlob() {
         { text: ', cuya última cuota por el importe de S/2070.00 será cubierto con el reembolso que brinda ESSALUD cuando se requiera el uso del servicio.', bold: false }
     ];
     const p1Tokens = cartaSegmentsToTokens(p1Segments);
-    y = drawCartaMixedParagraph(doc, p1Tokens, m, y, contentW, lineHParrafo, ensureSpace, true);
-    y += 4.5;
+    y = drawCartaMixedParagraph(doc, p1Tokens, m, y, contentW, lineHParrafoPrimero, ensureSpace);
+    y += 4.8;
 
-    const saltoLineaCompacto = 2.7;
-    writeParagraph('Por lo indicado, cuando ocurra la necesidad inmediata, me comprometo a presentar los siguientes documentos:', 5.4);
-    y += 4.5;
+    const saltoLineaCompacto = 2.45;
+    writeParagraph('Por lo indicado, cuando ocurra la necesidad inmediata, me comprometo a presentar los siguientes documentos:', 5.3);
+    y += 3.85;
     writeParagraphIndented('1. Copias de 02 Boletas de remuneraciones (mes del fallecimiento y anterior).', 6);
     writeParagraphIndented('2. Copia del DNI del titular (fallecido).', 6);
     writeParagraphIndented('3. Copia del DNI vigente del beneficiario (familiar directo).', 6);
@@ -1966,33 +1957,38 @@ function generarCartaEssaludPDFBlob() {
     doc.setFontSize(11);
     ensureSpace(8.2);
     doc.text(essLinea4A, m + 6, y, { maxWidth: contentW - 6, align: 'left' });
-    y += 4.1;
+    y += 3.85;
     doc.text(essLinea4B, m + 6, y, { maxWidth: contentW - 6, align: 'left' });
-    y += 4.5;
+    y += 4.05;
+    /* Salto de línea (enter) después de «cobro del mismo.» antes de «De igual forma…» */
+    y += lineHParrafo;
     y += saltoLineaCompacto;
-    /* Párrafos finales justificados hasta el mismo borde derecho */
-    writeParagraphAllJustify('De igual forma, de requerirse algún documento adicional no contemplado en el\ndetalle anterior, brindaré las facilidades del caso inmediatamente.', 4.5);
-    y += 4.5;
-    writeParagraphAllJustify('Finalmente, en caso de incumplimiento con alguno de los documentos, asumiré el\npago inmediato de los S/2070.', 4.5);
-    y += 6;
+    drawPlainParagraphWithHardBreaks('De igual forma, de requerirse algún documento adicional no contemplado en el\ndetalle anterior, brindaré las facilidades del caso inmediatamente.');
+    y += lineHParrafo;
+    drawPlainParagraphWithHardBreaks('Finalmente, en caso de incumplimiento con alguno de los documentos, asumiré el\npago inmediato de los S/2070.');
+    y += 3.4;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     ensureSpace(lineH + 1);
     doc.text('Atentamente', m, y);
-    y += lineH + 4.5;
+    y += lineH + 1.05;
 
+    /* Bloque DNI / NOMBRE: reservar solo lo que ocupa (evita ensureSpace grande que mandaba el bloque a otra hoja) */
     const firmaRight = pageW - marginRight;
-    const firmaLabelX = firmaRight - 62;
+    const firmaBlockMaxW = firmaRight - m;
     doc.setFont('helvetica', 'bold');
-    doc.text('DNI:', firmaLabelX, y);
-    doc.setFont('helvetica', dniVal ? 'bold' : 'normal');
-    doc.text(dniDisplay, firmaLabelX + 18, y);
+    doc.setFontSize(11);
+    const nombreFirmaLine = 'NOMBRE: ' + nombreDisplay;
+    const nombreFirmaLines = doc.splitTextToSize(nombreFirmaLine, firmaBlockMaxW);
+    const firmaNeededMm = lineH * (1 + nombreFirmaLines.length) + 2.25;
+    ensureSpace(firmaNeededMm);
+    doc.text('DNI: ' + dniDisplay, firmaRight, y, { align: 'right' });
     y += lineH;
-    doc.setFont('helvetica', 'bold');
-    doc.text('NOMBRE:', firmaLabelX, y);
-    doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
-    doc.text(nombreDisplay, firmaLabelX + 24, y);
+    nombreFirmaLines.forEach(function (ln) {
+        doc.text(ln, firmaRight, y, { align: 'right' });
+        y += lineH;
+    });
 
     return Promise.resolve(doc.output('blob'));
 }
