@@ -9,6 +9,7 @@ const VERDE = '#1a4731';
 const DORADO = '#a6894a';
 const STORAGE_KEY = 'jardines_de_la_paz_proforma';
 const STORAGE_KEY_CARTA = 'jardines_carta_compromiso_sis';
+const STORAGE_KEY_CARTA_ESSALUD = 'jardines_carta_compromiso_essalud';
 
 const DEFAULT_LABELS = {
     pro_lote: 'Lote doble encofrado',
@@ -151,7 +152,6 @@ function initSidebarNavigation() {
     });
     window.addEventListener('resize', function () {
         setHeaderJdpHeight();
-        if (window.innerWidth > 900) closeDrawer();
     });
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
@@ -1165,49 +1165,65 @@ function cartaSegmentsToTokens(segments) {
     return tokens;
 }
 
-function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn) {
+function drawCartaMixedParagraph(doc, tokens, x, startY, w, lineH, ensureSpaceFn, forceAllJustify) {
     let y = startY;
     let line = [];
     let lineW = 0;
-    function flushLine() {
+    const lines = [];
+
+    function pushLine() {
         if (!line.length) return;
-        ensureSpaceFn(lineH);
-        let xPos = x;
-        line.forEach(function (tok) {
-            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
-            doc.setFontSize(11);
-            doc.text(tok.text, xPos, y);
-            xPos += doc.getTextWidth(tok.text);
-        });
-        y += lineH;
+        lines.push(line);
         line = [];
         lineW = 0;
     }
+
     tokens.forEach(function (tok) {
         doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
         doc.setFontSize(11);
         const tw = doc.getTextWidth(tok.text);
         if (tw > w) {
-            flushLine();
-            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
-            doc.setFontSize(11);
+            pushLine();
             const subLines = doc.splitTextToSize(tok.text, w);
             subLines.forEach(function (sub) {
-                ensureSpaceFn(lineH);
-                doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
-                doc.setFontSize(11);
-                doc.text(sub, x, y);
-                y += lineH;
+                lines.push([{ text: sub, bold: tok.bold }]);
             });
             return;
         }
         if (lineW + tw > w && line.length > 0) {
-            flushLine();
+            pushLine();
         }
         line.push(tok);
         lineW += tw;
     });
-    flushLine();
+    pushLine();
+
+    lines.forEach(function (lineTokens, idx) {
+        const isLastLine = idx === lines.length - 1;
+        ensureSpaceFn(lineH);
+        let rawW = 0;
+        let spacesCount = 0;
+        lineTokens.forEach(function (tok) {
+            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+            doc.setFontSize(11);
+            rawW += doc.getTextWidth(tok.text);
+            if (/^\s+$/.test(tok.text)) spacesCount++;
+        });
+        const shouldJustifyThisLine = (forceAllJustify === true) ? true : !isLastLine;
+        const extraPerSpace = (shouldJustifyThisLine && spacesCount > 0 && rawW < w) ? ((w - rawW) / spacesCount) : 0;
+
+        let xPos = x;
+        lineTokens.forEach(function (tok) {
+            doc.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+            doc.setFontSize(11);
+            doc.text(tok.text, xPos, y);
+            let advance = doc.getTextWidth(tok.text);
+            if (extraPerSpace > 0 && /^\s+$/.test(tok.text)) advance += extraPerSpace;
+            xPos += advance;
+        });
+        y += lineH;
+    });
+
     return y;
 }
 
@@ -1221,16 +1237,26 @@ function generarCartaPDFBlob() {
     const contentW = pageW - 2 * m;
     const pageH = 297;
     const bottomSafe = 24;
-    const lineH = 5.3;
-    /** Párrafo "Yo, …" — un poco más aire que el cuerpo, pero más compacto */
-    const lineHParrafoYo = 7;
-    const paraGap = 4.5;
-    let y = 18;
+    /** Interlineado uniforme para todo el cuerpo */
+    const lineH = 8.5;
+    const lineHParrafoYo = 8.5;
+    const paraGap = 0;
+    let y = 24;
 
-    const dia = getCartaStr('carta_dia') || '....';
-    const mesRaw = getCartaStr('carta_mes') || '...............................';
-    const mes = String(mesRaw).toUpperCase();
-    const anioFull = String(new Date().getFullYear());
+    const fechaRaw = getCartaStr('carta_fecha');
+    let dia = '....';
+    let mes = '...............................';
+    let anioFull = String(new Date().getFullYear());
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)) {
+        const parts = fechaRaw.split('-');
+        const y = Number(parts[0]);
+        const mNum = Number(parts[1]);
+        const dNum = Number(parts[2]);
+        const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        if (y >= 1900) anioFull = String(y);
+        if (mNum >= 1 && mNum <= 12) mes = months[mNum - 1];
+        if (dNum >= 1 && dNum <= 31) dia = String(dNum);
+    }
 
     const nombreVal = getCartaStr('carta_nombre');
     const dniVal = getCartaStr('carta_dni');
@@ -1255,31 +1281,288 @@ function generarCartaPDFBlob() {
         if (y + mm > pageH - bottomSafe) newPage();
     }
 
-    function writeParagraph(text) {
+    function writeParagraph(text, customLineH) {
+        const lh = customLineH || lineH;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
         const lines = doc.splitTextToSize(text, contentW);
-        ensureSpace(lines.length * lineH + 2);
-        doc.text(text, m, y, { maxWidth: contentW, align: 'justify' });
-        y += lines.length * lineH;
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line, idx) {
+            const isLast = idx === lines.length - 1;
+            if (isLast) {
+                doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+            } else {
+                const parts = String(line).split(' ');
+                if (parts.length <= 1) {
+                    doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+                } else {
+                    const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                    const gaps = parts.length - 1;
+                    const gapW = (contentW - wordsW) / gaps;
+                    let xPos = m;
+                    parts.forEach(function (w, wi) {
+                        doc.text(w, xPos, y);
+                        xPos += doc.getTextWidth(w);
+                        if (wi < parts.length - 1) xPos += gapW;
+                    });
+                }
+            }
+            y += lh;
+        });
+    }
+
+    function writeParagraphAllJustify(text, customLineH, strictJustify) {
+        const lh = customLineH || lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, contentW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            const parts = String(line).split(' ');
+            if (parts.length <= 1) {
+                doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+            } else {
+                const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                const gaps = parts.length - 1;
+                const gapW = (contentW - wordsW) / gaps;
+                let xPos = m;
+                parts.forEach(function (w, wi) {
+                    doc.text(w, xPos, y);
+                    xPos += doc.getTextWidth(w);
+                    if (wi < parts.length - 1) xPos += gapW;
+                });
+            }
+            y += lh;
+        });
+    }
+
+    /* Justificado más ancho para que llegue más a laterales */
+    function writeParagraphAllJustifyWide(text, customLineH, extraWidth) {
+        const lh = customLineH || lineH;
+        const extra = extraWidth || 0;
+        const xStart = m - (extra / 2);
+        const wideW = contentW + extra;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, wideW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            const parts = String(line).trim().split(/\s+/);
+            if (parts.length <= 4) {
+                doc.text(line, xStart, y, { maxWidth: wideW, align: 'left' });
+            } else {
+                const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                const gaps = parts.length - 1;
+                const gapW = gaps > 0 ? ((wideW - wordsW) / gaps) : 0;
+                let xPos = xStart;
+                parts.forEach(function (w, wi) {
+                    doc.text(w, xPos, y);
+                    xPos += doc.getTextWidth(w);
+                    if (wi < parts.length - 1) xPos += gapW;
+                });
+            }
+            y += lh;
+        });
+    }
+
+    /* Variante para forzar justificado en todas las líneas del párrafo */
+    function writeParagraphAllJustify(text, customLineH, strictJustify) {
+        const lh = customLineH || lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, contentW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            const parts = String(line).trim().split(/\s+/);
+            /* Evitar justificar líneas muy cortas para que no se deformen */
+            if (parts.length <= 4) {
+                doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+            } else {
+                const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                const gaps = parts.length - 1;
+                const gapW = gaps > 0 ? ((contentW - wordsW) / gaps) : 0;
+                let xPos = m;
+                parts.forEach(function (w, wi) {
+                    doc.text(w, xPos, y);
+                    xPos += doc.getTextWidth(w);
+                    if (wi < parts.length - 1) xPos += gapW;
+                });
+            }
+            y += lh;
+        });
+    }
+
+    function writeParagraphIndented(text, indentMm, customLineH) {
+        const lh = customLineH || lineH;
+        const indent = indentMm || 0;
+        const maxW = contentW - indent;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, maxW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line, idx) {
+            const isLast = idx === lines.length - 1;
+            doc.text(line, m + indent, y, { maxWidth: maxW, align: isLast ? 'left' : 'justify' });
+            y += lh;
+        });
+    }
+
+    function writeParagraphAllJustify(text, customLineH, strictJustify) {
+        const lh = customLineH || lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const blocks = String(text).split('\n');
+        blocks.forEach(function (block, bi) {
+            const lines = doc.splitTextToSize(block, contentW);
+            ensureSpace(lines.length * lh + 2);
+            lines.forEach(function (line, li) {
+                const parts = String(line).trim().split(/\s+/);
+                /* Última línea de cada bloque: natural */
+                const isLastLine = li === lines.length - 1;
+                if (isLastLine || parts.length <= 1) {
+                    doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+                } else {
+                    const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                    const gaps = parts.length - 1;
+                    const gapW = (contentW - wordsW) / gaps;
+                    let xPos = m;
+                    parts.forEach(function (w, wi) {
+                        doc.text(w, xPos, y);
+                        xPos += doc.getTextWidth(w);
+                        if (wi < parts.length - 1) xPos += gapW;
+                    });
+                }
+                y += lh;
+            });
+            if (bi < blocks.length - 1) y += 0;
+        });
+    }
+
+    function writeParagraphAllJustifyWide(text, customLineH, extraWidth) {
+        const lh = customLineH || lineH;
+        const extra = extraWidth || 0;
+        const xStart = m - (extra / 2);
+        const wideW = contentW + extra;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, wideW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            const parts = String(line).trim().split(/\s+/);
+            if (parts.length <= 4) {
+                doc.text(line, xStart, y, { maxWidth: wideW, align: 'left' });
+            } else {
+                const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                const gaps = parts.length - 1;
+                const gapW = gaps > 0 ? ((wideW - wordsW) / gaps) : 0;
+                let xPos = xStart;
+                parts.forEach(function (w, wi) {
+                    doc.text(w, xPos, y);
+                    xPos += doc.getTextWidth(w);
+                    if (wi < parts.length - 1) xPos += gapW;
+                });
+            }
+            y += lh;
+        });
+    }
+
+    function writeParagraphIndented(text, indentMm) {
+        const lh = lineH;
+        const indent = indentMm || 0;
+        const maxW = contentW - indent;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, maxW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line, idx) {
+            const isLast = idx === lines.length - 1;
+            if (isLast) {
+                doc.text(line, m + indent, y, { maxWidth: maxW, align: 'left' });
+            } else {
+                const parts = String(line).split(' ');
+                if (parts.length <= 1) {
+                    doc.text(line, m + indent, y, { maxWidth: maxW, align: 'left' });
+                } else {
+                    const wordsW = parts.reduce(function (sum, w) { return sum + doc.getTextWidth(w); }, 0);
+                    const gaps = parts.length - 1;
+                    const gapW = (maxW - wordsW) / gaps;
+                    let xPos = m + indent;
+                    parts.forEach(function (w, wi) {
+                        doc.text(w, xPos, y);
+                        xPos += doc.getTextWidth(w);
+                        if (wi < parts.length - 1) xPos += gapW;
+                    });
+                }
+            }
+            y += lh;
+        });
+    }
+
+    function writeParagraphIndented(text, indentMm) {
+        const lh = lineH;
+        const indent = indentMm || 0;
+        const maxW = contentW - indent;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, maxW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line, idx) {
+            const isLast = idx === lines.length - 1;
+            doc.text(line, m + indent, y, { maxWidth: maxW, align: isLast ? 'left' : 'justify' });
+            y += lh;
+        });
     }
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('CARTA DE COMPROMISO - SIS', pageW / 2, y, { align: 'center' });
-    y += 10;
+    y += 13;
 
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    const fechaLine = 'TRUJILLO, ' + dia + ' DE ' + mes + ', ' + anioFull;
-    doc.text(fechaLine, pageW - m, y, { align: 'right' });
-    y += 9;
+    const fechaPrefix = 'TRUJILLO, ';
+    const fechaDia = dia;
+    const fechaMid = ' DE ';
+    const fechaMes = mes;
+    const fechaComma = ', ';
+    const fechaAnio = anioFull;
+    doc.setFont('helvetica', 'normal');
+    const wPrefix = doc.getTextWidth(fechaPrefix);
+    doc.setFont('helvetica', 'bold');
+    const wDia = doc.getTextWidth(fechaDia);
+    doc.setFont('helvetica', 'normal');
+    const wMid = doc.getTextWidth(fechaMid);
+    doc.setFont('helvetica', 'bold');
+    const wMes = doc.getTextWidth(fechaMes);
+    doc.setFont('helvetica', 'normal');
+    const wComma = doc.getTextWidth(fechaComma);
+    doc.setFont('helvetica', 'bold');
+    const wAnio = doc.getTextWidth(fechaAnio);
+    const xFecha = (pageW - m) - (wPrefix + wDia + wMid + wMes + wComma + wAnio);
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaPrefix, xFecha, y);
+    let xRun = xFecha + wPrefix;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaDia, xRun, y);
+    xRun += wDia;
+    doc.setFont('helvetica', 'bold');
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaMid, xRun, y);
+    xRun += wMid;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaMes, xRun, y);
+    xRun += wMes;
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaComma, xRun, y);
+    xRun += wComma;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaAnio, xRun, y);
+    y += 12;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('SEÑORES:', m, y);
-    y += lineH + 1;
+    y += lineH + 3.6;
     doc.text('PARQUE DEL NORTE S.A', m, y);
     y += 8.5;
 
@@ -1310,13 +1593,13 @@ function generarCartaPDFBlob() {
 
     const p3 = 'Por el monto de S/. 1,000 (MIL Y 00/100 soles) al momento que requiera el uso del servicio.';
     writeParagraph(p3);
-    y += 9;
+    y += paraGap;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    ensureSpace(lineH + 3);
+    ensureSpace(lineH + 1);
     doc.text('Atentamente,', m, y);
-    y += lineH + 5;
+    y += lineH + 4.5;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -1325,7 +1608,7 @@ function generarCartaPDFBlob() {
     doc.setFontSize(11);
     const footerNameLines = doc.splitTextToSize(nombreDisplay, contentW - 24);
     doc.text(footerNameLines[0], m + 24, y);
-    y += lineH;
+    y += lineH * 0.02;
     for (let fi = 1; fi < footerNameLines.length; fi++) {
         ensureSpace(lineH);
         doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
@@ -1345,7 +1628,7 @@ function generarCartaPDFBlob() {
 function guardarCarta() {
     if (typeof localStorage === 'undefined') return;
     try {
-        const ids = ['carta_dia', 'carta_mes', 'carta_nombre', 'carta_dni', 'carta_direccion', 'carta_telefono', 'carta_servicio', 'carta_contrato'];
+        const ids = ['carta_fecha', 'carta_nombre', 'carta_dni', 'carta_direccion', 'carta_telefono', 'carta_servicio', 'carta_contrato'];
         const data = {};
         ids.forEach(function (id) {
             const el = document.getElementById(id);
@@ -1366,13 +1649,6 @@ function cargarCarta() {
             const el = document.getElementById(id);
             if (el && 'value' in el) el.value = data[id];
         });
-        const mesEl = document.getElementById('carta_mes');
-        if (mesEl && mesEl.value) {
-            const v = String(mesEl.value).trim().toUpperCase();
-            if ([].some.call(mesEl.options, function (o) { return o.value === v; })) {
-                mesEl.value = v;
-            }
-        }
     } catch (e) {}
 }
 
@@ -1380,6 +1656,8 @@ function cargarCarta() {
 function normalizarCartaCampos() {
     const cn = document.getElementById('carta_nombre');
     if (cn && cn.value) cn.value = String(cn.value).replace(/[0-9]/g, '');
+    const cd = document.getElementById('carta_dni');
+    if (cd && cd.value) cd.value = String(cd.value).replace(/\D/g, '').slice(0, 8);
     const ct = document.getElementById('carta_telefono');
     if (ct && ct.value) {
         let val = String(ct.value).replace(/\D/g, '').slice(0, 9);
@@ -1388,39 +1666,16 @@ function normalizarCartaCampos() {
     }
 }
 
-/** Opciones 1–31 en el select de día (debe ejecutarse antes de cargarCarta). */
-function fillCartaDiasSelect() {
-    const sel = document.getElementById('carta_dia');
-    if (!sel || sel.tagName !== 'SELECT') return;
-    const prev = sel.value;
-    sel.innerHTML = '';
-    const opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = 'Día';
-    sel.appendChild(opt0);
-    for (let d = 1; d <= 31; d++) {
-        const o = document.createElement('option');
-        o.value = String(d);
-        o.textContent = String(d);
-        sel.appendChild(o);
-    }
-    if (prev && [].some.call(sel.options, function (opt) { return opt.value === prev; })) {
-        sel.value = prev;
-    }
-}
-
 /** Si no hay fecha guardada, usar la fecha actual. */
 function aplicarCartaFechaDefecto() {
-    const d = document.getElementById('carta_dia');
-    const m = document.getElementById('carta_mes');
-    if (!d || !m) return;
+    const f = document.getElementById('carta_fecha');
+    if (!f) return;
     const now = new Date();
-    if (!d.value) {
-        d.value = String(now.getDate());
-    }
-    if (!m.value) {
-        const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
-        m.value = months[now.getMonth()];
+    if (!f.value) {
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        f.value = y + '-' + m + '-' + d;
     }
 }
 
@@ -1496,6 +1751,364 @@ function abrirSweetAlertCarta() {
         }
         if (result.isDenied) {
             enviarCartaWhatsApp();
+        }
+    });
+}
+
+function getFechaPartesFromInput(id) {
+    const fechaRaw = getCartaStr(id);
+    let dia = '....';
+    let mes = '...............................';
+    let anioFull = String(new Date().getFullYear());
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)) {
+        const parts = fechaRaw.split('-');
+        const yearNum = Number(parts[0]);
+        const monthNum = Number(parts[1]);
+        const dayNum = Number(parts[2]);
+        const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        if (yearNum >= 1900) anioFull = String(yearNum);
+        if (monthNum >= 1 && monthNum <= 12) mes = months[monthNum - 1];
+        if (dayNum >= 1 && dayNum <= 31) dia = String(dayNum);
+    }
+    return { dia, mes, anioFull };
+}
+
+/** Carta ESSALUD con mismo estilo de hoja/justificado/interlineado que SIS */
+function generarCartaEssaludPDFBlob() {
+    const JsPDF = window.jspdf && window.jspdf.jsPDF;
+    if (!JsPDF) return Promise.resolve(null);
+    const doc = new JsPDF('p', 'mm', 'a4');
+    const m = 25;
+    const marginRight = 23;
+    const pageW = 210;
+    const contentW = pageW - m - marginRight;
+    const pageH = 297;
+    const bottomSafe = 24;
+    const lineH = 8.5;
+    /* Primer párrafo ESSALUD sin interlineado extra */
+    const lineHParrafo = 5.4;
+    const paraGap = 0;
+    let y = 24;
+
+    const partesFecha = getFechaPartesFromInput('ess_fecha');
+    const dia = partesFecha.dia;
+    const mes = partesFecha.mes;
+    const anioFull = partesFecha.anioFull;
+
+    const nombreVal = getCartaStr('ess_nombre');
+    const dniVal = getCartaStr('ess_dni');
+    const titularVal = getCartaStr('ess_titular');
+    const domicilioVal = getCartaStr('ess_domicilio');
+    const contratoVal = getCartaStr('ess_contrato');
+
+    const nombreDisplay = nombreVal || '....................................................................................................';
+    const dniDisplay = dniVal || '....................................';
+    const titularDisplay = titularVal || '.............................................................';
+    const domicilioDisplay = domicilioVal || '..................................................';
+    const contratoDisplay = contratoVal || '..............................';
+
+    function newPage() {
+        doc.addPage('p', 'mm', 'a4');
+        y = 25;
+    }
+
+    function ensureSpace(mm) {
+        if (y + mm > pageH - bottomSafe) newPage();
+    }
+
+    function writeParagraph(text, customLineH) {
+        const lh = customLineH || lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, contentW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            doc.text(line, m, y, { maxWidth: contentW, align: 'justify' });
+            y += lh;
+        });
+    }
+
+    /** Justificado manual (word-like): última línea queda a la izquierda */
+    function writeParagraphAllJustify(text, customLineH) {
+        const lh = customLineH || lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, contentW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line, lineIdx) {
+            const parts = String(line).trim().split(/\s+/).filter(Boolean);
+            const isLastLine = lineIdx === lines.length - 1;
+            if (parts.length <= 1 || isLastLine) {
+                doc.text(line, m, y, { maxWidth: contentW, align: 'left' });
+                y += lh;
+                return;
+            }
+            const wordsW = parts.reduce(function (sum, w) {
+                return sum + doc.getTextWidth(w);
+            }, 0);
+            const gaps = parts.length - 1;
+            const gapW = (contentW - wordsW) / gaps;
+            let xPos = m;
+            parts.forEach(function (w, wi) {
+                doc.text(w, xPos, y);
+                xPos += doc.getTextWidth(w);
+                if (wi < parts.length - 1) xPos += gapW;
+            });
+            y += lh;
+        });
+    }
+
+    function writeParagraphIndented(text, indentMm) {
+        const lh = lineH;
+        const indent = indentMm || 0;
+        const maxW = contentW - indent;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(text, maxW);
+        ensureSpace(lines.length * lh + 2);
+        lines.forEach(function (line) {
+            doc.text(line, m + indent, y, { maxWidth: maxW, align: 'left' });
+            y += lh;
+        });
+    }
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('CARTA DE COMPROMISO', pageW / 2, y, { align: 'center' });
+    y += 13;
+
+    doc.setFontSize(11);
+    const fechaPrefix = 'TRUJILLO, ';
+    const fechaDia = dia;
+    const fechaMid = ' DE ';
+    const fechaMes = mes;
+    const fechaComma = ', ';
+    const fechaAnio = anioFull;
+    doc.setFont('helvetica', 'normal');
+    const wPrefix = doc.getTextWidth(fechaPrefix);
+    doc.setFont('helvetica', 'bold');
+    const wDia = doc.getTextWidth(fechaDia);
+    doc.setFont('helvetica', 'normal');
+    const wMid = doc.getTextWidth(fechaMid);
+    doc.setFont('helvetica', 'bold');
+    const wMes = doc.getTextWidth(fechaMes);
+    doc.setFont('helvetica', 'normal');
+    const wComma = doc.getTextWidth(fechaComma);
+    doc.setFont('helvetica', 'bold');
+    const wAnio = doc.getTextWidth(fechaAnio);
+    const xFecha = (pageW - marginRight) - (wPrefix + wDia + wMid + wMes + wComma + wAnio);
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaPrefix, xFecha, y);
+    let xRun = xFecha + wPrefix;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaDia, xRun, y);
+    xRun += wDia;
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaMid, xRun, y);
+    xRun += wMid;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaMes, xRun, y);
+    xRun += wMes;
+    doc.setFont('helvetica', 'normal');
+    doc.text(fechaComma, xRun, y);
+    xRun += wComma;
+    doc.setFont('helvetica', 'bold');
+    doc.text(fechaAnio, xRun, y);
+    y += 12;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('Señores,', m, y);
+    y += lineH + 3.6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('PARQUE DEL NORTE S.A.', m, y);
+    y += lineH;
+    doc.setFont('helvetica', 'normal');
+    doc.text('Presente.', m, y);
+    y += 8.5;
+
+    const p1Segments = [
+        { text: 'Yo, ', bold: false },
+        { text: nombreDisplay, bold: !!nombreVal },
+        { text: ', identificado(a) con DNI N.º ', bold: false },
+        { text: dniDisplay, bold: !!dniVal },
+        { text: ', domiciliado (a) ', bold: false },
+        { text: domicilioDisplay, bold: !!domicilioVal },
+        { text: ', he adquirido para el titular ', bold: false },
+        { text: titularDisplay, bold: !!titularVal },
+        { text: ', un Servicio Funerario según contrato: ', bold: false },
+        { text: contratoDisplay, bold: !!contratoVal },
+        { text: ', cuya última cuota por el importe de S/2070.00 será cubierto con el reembolso que brinda ESSALUD cuando se requiera el uso del servicio.', bold: false }
+    ];
+    const p1Tokens = cartaSegmentsToTokens(p1Segments);
+    y = drawCartaMixedParagraph(doc, p1Tokens, m, y, contentW, lineHParrafo, ensureSpace, true);
+    y += 4.5;
+
+    const saltoLineaCompacto = 2.7;
+    writeParagraph('Por lo indicado, cuando ocurra la necesidad inmediata, me comprometo a presentar los siguientes documentos:', 5.4);
+    y += 4.5;
+    writeParagraphIndented('1. Copias de 02 Boletas de remuneraciones (mes del fallecimiento y anterior).', 6);
+    writeParagraphIndented('2. Copia del DNI del titular (fallecido).', 6);
+    writeParagraphIndented('3. Copia del DNI vigente del beneficiario (familiar directo).', 6);
+    writeParagraphIndented('4. Copia del certificado de defunción.', 6);
+    writeParagraphIndented('5. Original del acta de defunción.', 6);
+    y += saltoLineaCompacto;
+    writeParagraph('Además, firmaré los siguientes documentos:');
+    y += saltoLineaCompacto;
+    writeParagraphIndented('1. Formulario Único de Seguros y Prestaciones (1010).', 6);
+    writeParagraphIndented('2. Declaración Jurada por gastos de sepelio y anexos.', 6);
+    writeParagraphIndented('3. Pagaré firmado por el beneficiario y aval como garantía de pago.', 6);
+    /* Ítem 4: solo alineado a la izquierda (sin justificar; evita huecos enormes entre palabras) */
+    const essLinea4A = '4. Poder Notarial otorgado a Parque del Norte S.A. a realizar el trámite hasta';
+    const essLinea4B = 'cobro del mismo.';
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    ensureSpace(8.2);
+    doc.text(essLinea4A, m + 6, y, { maxWidth: contentW - 6, align: 'left' });
+    y += 4.1;
+    doc.text(essLinea4B, m + 6, y, { maxWidth: contentW - 6, align: 'left' });
+    y += 4.5;
+    y += saltoLineaCompacto;
+    /* Párrafos finales justificados hasta el mismo borde derecho */
+    writeParagraphAllJustify('De igual forma, de requerirse algún documento adicional no contemplado en el\ndetalle anterior, brindaré las facilidades del caso inmediatamente.', 4.5);
+    y += 4.5;
+    writeParagraphAllJustify('Finalmente, en caso de incumplimiento con alguno de los documentos, asumiré el\npago inmediato de los S/2070.', 4.5);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    ensureSpace(lineH + 1);
+    doc.text('Atentamente', m, y);
+    y += lineH + 4.5;
+
+    const firmaRight = pageW - marginRight;
+    const firmaLabelX = firmaRight - 62;
+    doc.setFont('helvetica', 'bold');
+    doc.text('DNI:', firmaLabelX, y);
+    doc.setFont('helvetica', dniVal ? 'bold' : 'normal');
+    doc.text(dniDisplay, firmaLabelX + 18, y);
+    y += lineH;
+    doc.setFont('helvetica', 'bold');
+    doc.text('NOMBRE:', firmaLabelX, y);
+    doc.setFont('helvetica', nombreVal ? 'bold' : 'normal');
+    doc.text(nombreDisplay, firmaLabelX + 24, y);
+
+    return Promise.resolve(doc.output('blob'));
+}
+
+function guardarCartaEssalud() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const ids = ['ess_fecha', 'ess_nombre', 'ess_dni', 'ess_titular', 'ess_domicilio', 'ess_contrato'];
+        const data = {};
+        ids.forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el && 'value' in el) data[id] = el.value;
+        });
+        localStorage.setItem(STORAGE_KEY_CARTA_ESSALUD, JSON.stringify(data));
+    } catch (e) {}
+}
+
+function cargarCartaEssalud() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_CARTA_ESSALUD);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object') return;
+        Object.keys(data).forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el && 'value' in el) el.value = data[id];
+        });
+    } catch (e) {}
+}
+
+function normalizarCartaEssaludCampos() {
+    const n = document.getElementById('ess_nombre');
+    if (n && n.value) n.value = String(n.value).replace(/[0-9]/g, '');
+    const t = document.getElementById('ess_titular');
+    if (t && t.value) t.value = String(t.value).replace(/[0-9]/g, '');
+    const d = document.getElementById('ess_dni');
+    if (d && d.value) d.value = String(d.value).replace(/\D/g, '').slice(0, 8);
+}
+
+function aplicarCartaEssaludFechaDefecto() {
+    const f = document.getElementById('ess_fecha');
+    if (!f) return;
+    const now = new Date();
+    if (!f.value) {
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        f.value = y + '-' + m + '-' + d;
+    }
+}
+
+function verCartaEssaludPDF() {
+    generarCartaEssaludPDFBlob().then(function (blob) {
+        if (!blob) {
+            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Error', text: 'No se pudo generar el PDF.', icon: 'error', confirmButtonColor: VERDE });
+            else alert('No se pudo generar el PDF.');
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        window.open(url + '#zoom=page-width', '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    });
+}
+
+function enviarCartaEssaludWhatsApp() {
+    const shareData = { title: 'Carta de Compromiso ESSALUD', text: 'Carta de Compromiso - ESSALUD. Parque del Norte.' };
+    generarCartaEssaludPDFBlob().then(function (pdfBlob) {
+        if (!pdfBlob) {
+            abrirEnlaceWa(shareData.text);
+            return;
+        }
+        const f = new File([pdfBlob], 'Carta-Compromiso-ESSALUD.pdf', { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+            navigator.share({ title: shareData.title, text: shareData.text, files: [f] }).then(function () {
+                if (typeof Swal !== 'undefined') Swal.fire({ title: 'Enviado', text: 'Compartido correctamente.', icon: 'success', confirmButtonColor: VERDE });
+            }).catch(function () {
+                abrirEnlaceWa(shareData.text);
+            });
+        } else {
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Carta-Compromiso-ESSALUD.pdf';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+            abrirEnlaceWa(shareData.text);
+        }
+    });
+}
+
+function abrirSweetAlertCartaEssalud() {
+    if (typeof Swal === 'undefined') {
+        verCartaEssaludPDF();
+        return;
+    }
+    Swal.fire({
+        title: 'Carta ESSALUD',
+        html: 'Elige qué hacer con el PDF:',
+        icon: 'info',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Ver PDF',
+        denyButtonText: 'Compartir PDF',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: VERDE,
+        denyButtonColor: DORADO,
+        cancelButtonColor: '#666'
+    }).then(function (result) {
+        if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) return;
+        if (result.isConfirmed) {
+            verCartaEssaludPDF();
+            return;
+        }
+        if (result.isDenied) {
+            enviarCartaEssaludWhatsApp();
         }
     });
 }
@@ -1626,10 +2239,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setHeaderJdpHeight();
     initSidebarNavigation();
     cargarProforma();
-    fillCartaDiasSelect();
     cargarCarta();
     normalizarCartaCampos();
     aplicarCartaFechaDefecto();
+    cargarCartaEssalud();
+    normalizarCartaEssaludCampos();
+    aplicarCartaEssaludFechaDefecto();
     actualizarVisibilidadNivelBox();
     updateDisplays();
     actualizarVisibilidadRestaurarFilas();
@@ -1680,6 +2295,58 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const cartaDni = document.getElementById('carta_dni');
+    if (cartaDni) {
+        cartaDni.addEventListener('input', function () {
+            const val = String(this.value || '').replace(/\D/g, '').slice(0, 8);
+            if (this.value !== val) this.value = val;
+        });
+        cartaDni.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 8);
+            this.value = pasted;
+        });
+    }
+
+    const essNombre = document.getElementById('ess_nombre');
+    if (essNombre) {
+        essNombre.addEventListener('input', function () {
+            const cleaned = String(this.value || '').replace(/[0-9]/g, '');
+            if (this.value !== cleaned) this.value = cleaned;
+        });
+        essNombre.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const t = (e.clipboardData || window.clipboardData).getData('text').replace(/[0-9]/g, '');
+            this.value = t;
+        });
+    }
+
+    const essTitular = document.getElementById('ess_titular');
+    if (essTitular) {
+        essTitular.addEventListener('input', function () {
+            const cleaned = String(this.value || '').replace(/[0-9]/g, '');
+            if (this.value !== cleaned) this.value = cleaned;
+        });
+        essTitular.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const t = (e.clipboardData || window.clipboardData).getData('text').replace(/[0-9]/g, '');
+            this.value = t;
+        });
+    }
+
+    const essDni = document.getElementById('ess_dni');
+    if (essDni) {
+        essDni.addEventListener('input', function () {
+            const val = String(this.value || '').replace(/\D/g, '').slice(0, 8);
+            if (this.value !== val) this.value = val;
+        });
+        essDni.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 8);
+            this.value = pasted;
+        });
+    }
+
     const container = document.getElementById('proforma-content');
     let saveTimeout;
     function guardarConRetraso() {
@@ -1715,10 +2382,30 @@ document.addEventListener('DOMContentLoaded', () => {
             guardarCarta();
         });
     }
+    const essaludRoot = document.getElementById('essalud-form-root');
+    let essaludSaveTimeout;
+    function guardarCartaEssaludConRetraso() {
+        clearTimeout(essaludSaveTimeout);
+        essaludSaveTimeout = setTimeout(guardarCartaEssalud, 200);
+    }
+    if (essaludRoot) {
+        essaludRoot.addEventListener('input', function () {
+            guardarCartaEssaludConRetraso();
+        });
+        essaludRoot.addEventListener('change', function () {
+            guardarCartaEssalud();
+        });
+    }
     const btnCartaGenerar = document.getElementById('btn-carta-generar');
     if (btnCartaGenerar) {
         btnCartaGenerar.addEventListener('click', function () {
             abrirSweetAlertCarta();
+        });
+    }
+    const btnEssaludGenerar = document.getElementById('btn-essalud-generar');
+    if (btnEssaludGenerar) {
+        btnEssaludGenerar.addEventListener('click', function () {
+            abrirSweetAlertCartaEssalud();
         });
     }
     const viewCartaEl = document.getElementById('view-carta');
@@ -1731,8 +2418,10 @@ document.addEventListener('DOMContentLoaded', () => {
         obsLucideCarta.observe(viewCartaEl, { attributes: true, attributeFilter: ['hidden'] });
     }
     window.addEventListener('beforeunload', guardarCarta);
+    window.addEventListener('beforeunload', guardarCartaEssalud);
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') guardarCarta();
+        if (document.visibilityState === 'hidden') guardarCartaEssalud();
     });
 
     const btnRestoreRows = document.getElementById('btn-restore-cost-rows');

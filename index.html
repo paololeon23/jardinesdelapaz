@@ -44,7 +44,8 @@
                     </div>
                     <nav class="sidebar-jdp-nav">
                         <button type="button" class="sidebar-link is-active" data-view-target="view-proforma" aria-current="page">Proforma</button>
-                        <button type="button" class="sidebar-link" data-view-target="view-carta">Carta compromiso</button>
+                        <button type="button" class="sidebar-link" data-view-target="view-carta">Carta compromiso - SIS</button>
+                        <button type="button" class="sidebar-link" data-view-target="view-carta-essalud">Carta compromiso - ESSALUD</button>
                     </nav>
                 </div>
             </aside>
@@ -227,27 +228,8 @@
                                         <div class="carta-field-body">
                                             <span class="carta-field-label">Fecha (Trujillo)</span>
                                             <div class="carta-fecha-row">
-                                                <div class="carta-select-wrap">
-                                                    <label class="carta-sublabel" for="carta_dia">Día</label>
-                                                    <select id="carta_dia" name="carta_dia" class="carta-select" aria-label="Día"></select>
-                                                </div>
-                                                <div class="carta-select-wrap carta-select-mes">
-                                                    <label class="carta-sublabel" for="carta_mes">Mes</label>
-                                                    <select id="carta_mes" name="carta_mes" class="carta-select" aria-label="Mes">
-                                                        <option value="">Mes</option>
-                                                        <option value="ENERO">Enero</option>
-                                                        <option value="FEBRERO">Febrero</option>
-                                                        <option value="MARZO">Marzo</option>
-                                                        <option value="ABRIL">Abril</option>
-                                                        <option value="MAYO">Mayo</option>
-                                                        <option value="JUNIO">Junio</option>
-                                                        <option value="JULIO">Julio</option>
-                                                        <option value="AGOSTO">Agosto</option>
-                                                        <option value="SEPTIEMBRE">Septiembre</option>
-                                                        <option value="OCTUBRE">Octubre</option>
-                                                        <option value="NOVIEMBRE">Noviembre</option>
-                                                        <option value="DICIEMBRE">Diciembre</option>
-                                                    </select>
+                                                <div class="carta-select-wrap carta-select-fecha">
+                                                    <input type="date" id="carta_fecha" name="carta_fecha" class="carta-input carta-input-fecha" aria-label="Fecha de la carta">
                                                 </div>
                                             </div>
                                         </div>
@@ -263,7 +245,7 @@
                                         <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="id-card"></i></span>
                                         <div class="carta-field-body">
                                             <label for="carta_dni" class="carta-field-label">DNI N.º</label>
-                                            <input type="text" id="carta_dni" name="carta_dni" class="carta-input" inputmode="numeric" maxlength="12" placeholder="Número de documento" autocomplete="off">
+                                            <input type="text" id="carta_dni" name="carta_dni" class="carta-input" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off">
                                         </div>
                                     </div>
                                     <div class="carta-field">
@@ -300,6 +282,72 @@
 
                                 <div class="carta-actions carta-actions-single">
                                     <button type="button" id="btn-carta-generar" class="btn-generate-jdp">Generar carta</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-carta-essalud" class="app-view" hidden>
+                    <div class="proforma-wrap">
+                        <div class="proforma-content carta-content" id="essalud-form-root">
+                            <div class="proforma-document carta-view-doc">
+                                <h2 class="carta-view-title">CARTA DE COMPROMISO - ESSALUD</h2>
+                                <p class="carta-view-text carta-lead">Complete los datos y pulse <strong>Generar carta</strong> para ver o compartir el PDF ESSALUD.</p>
+
+                                <div class="carta-form-grid" role="group" aria-label="Datos de la carta ESSALUD">
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="calendar"></i></span>
+                                        <div class="carta-field-body">
+                                            <span class="carta-field-label">Fecha (Trujillo)</span>
+                                            <div class="carta-fecha-row">
+                                                <div class="carta-select-wrap carta-select-fecha">
+                                                    <input type="date" id="ess_fecha" name="ess_fecha" class="carta-input carta-input-fecha" aria-label="Fecha de la carta ESSALUD">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="user"></i></span>
+                                        <div class="carta-field-body">
+                                            <label for="ess_nombre" class="carta-field-label">Nombre completo</label>
+                                            <input type="text" id="ess_nombre" name="ess_nombre" class="carta-input" placeholder="Apellidos y nombres (sin números)" autocomplete="name" inputmode="text">
+                                        </div>
+                                    </div>
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="id-card"></i></span>
+                                        <div class="carta-field-body">
+                                            <label for="ess_dni" class="carta-field-label">DNI N.º</label>
+                                            <input type="text" id="ess_dni" name="ess_dni" class="carta-input" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="map-pin"></i></span>
+                                        <div class="carta-field-body">
+                                            <label for="ess_domicilio" class="carta-field-label">Domicilio</label>
+                                            <textarea id="ess_domicilio" name="ess_domicilio" class="carta-input carta-textarea" rows="2" placeholder="Dirección completa"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="users"></i></span>
+                                        <div class="carta-field-body">
+                                            <label for="ess_titular" class="carta-field-label">Titular</label>
+                                            <input type="text" id="ess_titular" name="ess_titular" class="carta-input" placeholder="Nombre del titular (sin números)">
+                                        </div>
+                                    </div>
+                                    <div class="carta-field">
+                                        <span class="carta-field-icon-wrap" aria-hidden="true"><i data-lucide="file-text"></i></span>
+                                        <div class="carta-field-body">
+                                            <label for="ess_contrato" class="carta-field-label">Contrato N.º</label>
+                                            <input type="text" id="ess_contrato" name="ess_contrato" class="carta-input" placeholder="Número de contrato">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="carta-nota-pie">El PDF ESSALUD se genera con el mismo formato, interlineado y texto justificado que SIS. Los datos ingresados salen en negrita.</p>
+
+                                <div class="carta-actions carta-actions-single">
+                                    <button type="button" id="btn-essalud-generar" class="btn-generate-jdp">Generar carta</button>
                                 </div>
                             </div>
                         </div>
